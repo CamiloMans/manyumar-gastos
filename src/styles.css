@@ -633,6 +633,7 @@ select,
 input,
 select {
   padding: 0 12px;
+  font-size: 16px;
 }
 
 input:focus,
