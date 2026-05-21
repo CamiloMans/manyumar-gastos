@@ -54,30 +54,30 @@ const defaultAccounts = [
 ];
 
 const companyOptions = [
-  { id: "manyumar", name: "MANYUMAR" },
-  { id: "servicio", name: "SERVICIO" },
+  { id: "manyumar", name: "MANYUMAR", icon: "tractor" },
+  { id: "servicio", name: "SERVICIO", icon: "wrench" },
 ];
 
 const incomeOriginOptions = [
-  { id: "pacific-gold", name: "PACIFIC GOLD" },
-  { id: "trans-antartic", name: "TRANS ANTARTIC" },
-  { id: "brushel", name: "BRUSHEL" },
-  { id: "landes", name: "LANDES" },
-  { id: "sudmaris", name: "SUDMARIS" },
-  { id: "com-caniggia", name: "COM.CANIGGIA" },
-  { id: "prestamo", name: "PRESTAMO" },
+  { id: "pacific-gold", name: "PACIFIC GOLD", icon: "landmark" },
+  { id: "trans-antartic", name: "TRANS ANTARTIC", icon: "landmark" },
+  { id: "brushel", name: "BRUSHEL", icon: "landmark" },
+  { id: "landes", name: "LANDES", icon: "landmark" },
+  { id: "sudmaris", name: "SUDMARIS", icon: "landmark" },
+  { id: "com-caniggia", name: "COM.CANIGGIA", icon: "landmark" },
+  { id: "prestamo", name: "PRESTAMO", icon: "handshake" },
 ];
 
 const expenseDestinationOptions = [
-  { id: "operarios", name: "OPERARIOS" },
-  { id: "acuatecma", name: "ACUATECMA" },
-  { id: "u-de-chile", name: "U. DE CHILE" },
-  { id: "mecanico", name: "MECANICO" },
-  { id: "repuestos", name: "REPUESTOS" },
-  { id: "combustible", name: "COMBUSTIBLE" },
-  { id: "colacion", name: "COLACION" },
-  { id: "prestamo", name: "PRESTAMO" },
-  { id: "iva", name: "IVA" },
+  { id: "operarios", name: "OPERARIOS", icon: "tractor" },
+  { id: "acuatecma", name: "ACUATECMA", icon: "landmark" },
+  { id: "u-de-chile", name: "U. DE CHILE", icon: "landmark" },
+  { id: "mecanico", name: "MECANICO", icon: "wrench" },
+  { id: "repuestos", name: "REPUESTOS", icon: "package" },
+  { id: "combustible", name: "COMBUSTIBLE", icon: "coins" },
+  { id: "colacion", name: "COLACION", icon: "receipt" },
+  { id: "prestamo", name: "PRESTAMO", icon: "handshake" },
+  { id: "iva", name: "IVA", icon: "receipt" },
 ];
 
 const categoryIconComponents = {
@@ -987,7 +987,8 @@ function OptionList({ items, onSelect, selectedId }) {
     <div className="option-list">
       {items.map((item) => (
         <button className={item.id === selectedId ? "selected" : ""} key={item.id} onClick={() => onSelect(item.id)}>
-          {item.name}
+          <CategoryBadge category={item} compact />
+          <span className="option-list-label">{item.name}</span>
         </button>
       ))}
     </div>
