@@ -42,10 +42,10 @@ const expenseCategories = [
 ];
 
 const incomeCategories = [
-  { id: "serv-siembra", name: "SERV. SIEMBRA", icon: "sprout", type: "income" },
-  { id: "serv-cosecha", name: "SERV. COSECHA", icon: "wheat", type: "income" },
-  { id: "venta", name: "VENTA", icon: "dollar", type: "income" },
   { id: "prestamo-ingreso", name: "PRESTAMO", icon: "handshake", type: "income" },
+  { id: "serv-cosecha", name: "SERV. COSECHA", icon: "wheat", type: "income" },
+  { id: "serv-siembra", name: "SERV. SIEMBRA", icon: "sprout", type: "income" },
+  { id: "venta", name: "VENTA", icon: "dollar", type: "income" },
 ];
 
 const defaultAccounts = [
@@ -58,26 +58,37 @@ const companyOptions = [
   { id: "servicio", name: "SERVICIO", icon: "wrench" },
 ];
 
-const incomeOriginOptions = [
-  { id: "pacific-gold", name: "PACIFIC GOLD", icon: "landmark" },
-  { id: "trans-antartic", name: "TRANS ANTARTIC", icon: "landmark" },
-  { id: "brushel", name: "BRUSHEL", icon: "landmark" },
-  { id: "landes", name: "LANDES", icon: "landmark" },
-  { id: "sudmaris", name: "SUDMARIS", icon: "landmark" },
-  { id: "com-caniggia", name: "COM.CANIGGIA", icon: "landmark" },
-  { id: "prestamo", name: "PRESTAMO", icon: "handshake" },
+const manyumarExpenseCategories = [
+  { id: "manyumar-materiales", name: "MATERIALES", icon: "package", type: "expense", company: "manyumar" },
+  { id: "manyumar-semillas", name: "SEMILLAS", icon: "sprout", type: "expense", company: "manyumar" },
+  { id: "manyumar-serv-administrativos", name: "SERVICIOS ADMINISTRATIVOS", icon: "receipt", type: "expense", company: "manyumar" },
+  { id: "manyumar-serv-operativos", name: "SERVICIOS OPERATIVOS", icon: "wrench", type: "expense", company: "manyumar" },
 ];
 
-const expenseDestinationOptions = [
-  { id: "operarios", name: "OPERARIOS", icon: "tractor" },
-  { id: "acuatecma", name: "ACUATECMA", icon: "landmark" },
-  { id: "u-de-chile", name: "U. DE CHILE", icon: "landmark" },
-  { id: "mecanico", name: "MECANICO", icon: "wrench" },
-  { id: "repuestos", name: "REPUESTOS", icon: "package" },
-  { id: "combustible", name: "COMBUSTIBLE", icon: "coins" },
-  { id: "colacion", name: "COLACION", icon: "receipt" },
+const expenseCategoryDetails = {
+  "manyumar-serv-operativos": [
+    { id: "so-mantenimiento", name: "MANTENIMIENTO", icon: "wrench" },
+    { id: "so-ser-cosecha", name: "SER. COSECHA", icon: "wheat" },
+    { id: "so-ser-siembra", name: "SER. SIEMBRA", icon: "sprout" },
+  ],
+  "manyumar-serv-administrativos": [
+    { id: "sa-acuatecma", name: "ACUATECMA", icon: "landmark" },
+    { id: "sa-clave-internet-factura", name: "CLAVE INTERNET FACTURA", icon: "receipt" },
+    { id: "sa-contador", name: "CONTADOR", icon: "receipt" },
+    { id: "sa-infa", name: "INFA", icon: "landmark" },
+    { id: "sa-patente", name: "PATENTE", icon: "receipt" },
+    { id: "sa-u-de-chile", name: "UNIVERSIDAD DE CHILE", icon: "landmark" },
+  ],
+};
+
+const incomeOriginOptions = [
+  { id: "brushel", name: "BRUSHEL", icon: "landmark" },
+  { id: "com-caniggia", name: "COM.CANIGGIA", icon: "landmark" },
+  { id: "landes", name: "LANDES", icon: "landmark" },
+  { id: "pacific-gold", name: "PACIFIC GOLD", icon: "landmark" },
   { id: "prestamo", name: "PRESTAMO", icon: "handshake" },
-  { id: "iva", name: "IVA", icon: "receipt" },
+  { id: "sudmaris", name: "SUDMARIS", icon: "landmark" },
+  { id: "trans-antartic", name: "TRANS ANTARTIC", icon: "landmark" },
 ];
 
 const categoryIconComponents = {
@@ -271,9 +282,15 @@ function App() {
     return { income, expense, balance: income - expense };
   }, [monthTransactions]);
 
+  const lookupCategories = useMemo(
+    () => [...categories, ...manyumarExpenseCategories],
+    [categories],
+  );
+
   const context = {
     accounts,
     categories,
+    lookupCategories,
     monthTransactions,
     selectedMonth,
     setAccounts,
@@ -378,9 +395,9 @@ function NavButton({ item, active, onClick }) {
   );
 }
 
-function HomeView({ categories, monthTransactions, selectedMonth, totals }) {
+function HomeView({ lookupCategories, monthTransactions, selectedMonth, totals }) {
   const latest = [...monthTransactions].sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
-  const expenseByCategory = categoryTotals(monthTransactions, categories, "expense");
+  const expenseByCategory = categoryTotals(monthTransactions, lookupCategories, "expense");
 
   return (
     <section className="page-stack home-page">
@@ -418,7 +435,7 @@ function HomeView({ categories, monthTransactions, selectedMonth, totals }) {
         ) : (
           <div className="movement-list">
             {latest.slice(0, 6).map((transaction) => (
-              <MovementRow key={transaction.id} transaction={transaction} categories={categories} />
+              <MovementRow key={transaction.id} transaction={transaction} categories={lookupCategories} />
             ))}
           </div>
         )}
@@ -443,7 +460,7 @@ function SummaryCard({ title, value, type }) {
 }
 
 function LedgerView({
-  categories,
+  lookupCategories,
   monthTransactions,
   selectedMonth,
   setSelectedMonth,
@@ -490,7 +507,7 @@ function LedgerView({
                 {group.items.map((transaction) => (
                   <LedgerRow
                     key={transaction.id}
-                    categories={categories}
+                    categories={lookupCategories}
                     onDelete={() =>
                       setTransactions((current) => current.filter((item) => item.id !== transaction.id))
                     }
@@ -787,28 +804,41 @@ function FormHeader({ onClose, title }) {
 }
 
 function TransactionSheet({ accounts, categories, onClose, onSave, type }) {
-  const typedCategories = categories.filter((category) => category.type === type || category.type === "both");
-  const sortedCategories = [...typedCategories].sort((a, b) => a.name.localeCompare(b.name, "es"));
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [companyId, setCompanyId] = useState("");
   const [incomeOriginId, setIncomeOriginId] = useState("");
-  const [expenseDestinationId, setExpenseDestinationId] = useState("");
+  const [detailId, setDetailId] = useState("");
   const [date, setDate] = useState(inputDate());
   const [openSelect, setOpenSelect] = useState(null);
   const accountId = accounts[0]?.id || "main";
 
-  const selectedCategory = typedCategories.find((category) => category.id === categoryId);
+  useEffect(() => {
+    setCategoryId("");
+  }, [companyId]);
+
+  useEffect(() => {
+    setDetailId("");
+  }, [categoryId]);
+
+  const categoryListForCompany =
+    type === "expense" && companyId === "manyumar"
+      ? manyumarExpenseCategories
+      : categories.filter((category) => category.type === type || category.type === "both");
+  const sortedCategories = [...categoryListForCompany].sort((a, b) => a.name.localeCompare(b.name, "es"));
+
+  const selectedCategory = categoryListForCompany.find((category) => category.id === categoryId);
   const selectedCompany = companyOptions.find((company) => company.id === companyId);
   const selectedIncomeOrigin = incomeOriginOptions.find((origin) => origin.id === incomeOriginId);
-  const selectedExpenseDestination = expenseDestinationOptions.find((destination) => destination.id === expenseDestinationId);
+  const detailOptions = expenseCategoryDetails[categoryId] || null;
+  const selectedDetail = detailOptions?.find((detail) => detail.id === detailId);
   const valid =
     parseAmountInput(amount) > 0 &&
     categoryId &&
     companyId &&
     (type !== "income" || incomeOriginId) &&
-    (type !== "expense" || expenseDestinationId) &&
+    (!detailOptions || detailId) &&
     date &&
     accountId;
   const noun = type === "expense" ? "gasto" : "ingreso";
@@ -879,6 +909,28 @@ function TransactionSheet({ accounts, categories, onClose, onSave, type }) {
             </div>
           )}
 
+          {detailOptions && (
+            <>
+              <PickerField
+                label="Detalle"
+                open={openSelect === "detail"}
+                placeholder="Seleccionar detalle"
+                selected={selectedDetail?.name}
+                onToggle={() => setOpenSelect(openSelect === "detail" ? null : "detail")}
+              />
+              {openSelect === "detail" && (
+                <OptionList
+                  items={detailOptions}
+                  selectedId={detailId}
+                  onSelect={(id) => {
+                    setDetailId(id);
+                    setOpenSelect(null);
+                  }}
+                />
+              )}
+            </>
+          )}
+
           {type === "income" && (
             <>
               <PickerField
@@ -894,28 +946,6 @@ function TransactionSheet({ accounts, categories, onClose, onSave, type }) {
                   selectedId={incomeOriginId}
                   onSelect={(id) => {
                     setIncomeOriginId(id);
-                    setOpenSelect(null);
-                  }}
-                />
-              )}
-            </>
-          )}
-
-          {type === "expense" && (
-            <>
-              <PickerField
-                label="Destino de egreso"
-                open={openSelect === "expenseDestination"}
-                placeholder="Seleccionar destino"
-                selected={selectedExpenseDestination?.name}
-                onToggle={() => setOpenSelect(openSelect === "expenseDestination" ? null : "expenseDestination")}
-              />
-              {openSelect === "expenseDestination" && (
-                <OptionList
-                  items={expenseDestinationOptions}
-                  selectedId={expenseDestinationId}
-                  onSelect={(id) => {
-                    setExpenseDestinationId(id);
                     setOpenSelect(null);
                   }}
                 />
@@ -954,8 +984,8 @@ function TransactionSheet({ accounts, categories, onClose, onSave, type }) {
                 createdAt: new Date().toISOString(),
                 date,
                 description: description.trim() || selectedCategory?.name || noun,
-                expenseDestinationId: type === "expense" ? expenseDestinationId : "",
-                expenseDestinationName: type === "expense" ? selectedExpenseDestination?.name || "" : "",
+                detailId: detailOptions ? detailId : "",
+                detailName: detailOptions ? selectedDetail?.name || "" : "",
                 incomeOriginId: type === "income" ? incomeOriginId : "",
                 incomeOriginName: type === "income" ? selectedIncomeOrigin?.name || "" : "",
                 type,
@@ -1017,7 +1047,7 @@ function MovementRow({ categories, transaction }) {
       <span>
         <strong>{transaction.description}</strong>
         <small>
-          {[shortDate(transaction.date), transaction.companyName, transaction.incomeOriginName, transaction.expenseDestinationName]
+          {[shortDate(transaction.date), transaction.companyName, transaction.incomeOriginName, transaction.detailName]
             .filter(Boolean)
             .join(" · ")}
         </small>
@@ -1038,7 +1068,7 @@ function LedgerRow({ categories, onDelete, transaction }) {
       <span className="ledger-name">
         <strong>{transaction.description}</strong>
         <small>
-          {[category?.name, transaction.companyName, transaction.incomeOriginName, transaction.expenseDestinationName]
+          {[category?.name, transaction.companyName, transaction.incomeOriginName, transaction.detailName]
             .filter(Boolean)
             .join(" · ")}
         </small>
