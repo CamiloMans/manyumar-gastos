@@ -251,6 +251,11 @@ function App() {
   const [transactionModal, setTransactionModal] = useState(null);
   const [settingsPanel, setSettingsPanel] = useState(null);
 
+  useEffect(() => {
+    document.body.classList.toggle("modal-open", Boolean(transactionModal));
+    return () => document.body.classList.remove("modal-open");
+  }, [transactionModal]);
+
   const monthTransactions = useMemo(
     () => transactions.filter((transaction) => isSameMonth(transaction.date, selectedMonth)),
     [selectedMonth, transactions],
