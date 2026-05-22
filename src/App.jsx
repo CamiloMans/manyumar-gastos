@@ -31,7 +31,9 @@ import {
   X,
 } from "lucide-react";
 
-const expenseCategories = [
+// ─── Default data (used only as initial values for localStorage) ─────────────
+
+const defaultExpenseCategories = [
   { id: "adquisicion", name: "ADQUISICION", icon: "package", type: "expense" },
   { id: "contador", name: "CONTADOR", icon: "receipt", type: "expense" },
   { id: "cosecha", name: "COSECHA", icon: "wheat", type: "expense" },
@@ -41,7 +43,7 @@ const expenseCategories = [
   { id: "siembra", name: "SIEMBRA", icon: "sprout", type: "expense" },
 ];
 
-const incomeCategories = [
+const defaultIncomeCategories = [
   { id: "prestamo-ingreso", name: "PRESTAMO", icon: "handshake", type: "income" },
   { id: "serv-cosecha", name: "SERV. COSECHA", icon: "wheat", type: "income" },
   { id: "serv-siembra", name: "SERV. SIEMBRA", icon: "sprout", type: "income" },
@@ -53,45 +55,36 @@ const defaultAccounts = [
   { id: "savings", name: "Ahorros", initialBalance: 0 },
 ];
 
-const companyOptions = [
+const defaultCompanies = [
   { id: "manyumar", name: "MANYUMAR", icon: "tractor" },
   { id: "servicio", name: "SERVICIO", icon: "wrench" },
 ];
 
-const manyumarExpenseCategories = [
-  { id: "manyumar-materiales", name: "MATERIALES", icon: "package", type: "expense", company: "manyumar" },
-  { id: "manyumar-semillas", name: "SEMILLAS", icon: "sprout", type: "expense", company: "manyumar" },
-  { id: "manyumar-serv-administrativos", name: "SERVICIOS ADMINISTRATIVOS", icon: "receipt", type: "expense", company: "manyumar" },
-  { id: "manyumar-serv-operativos", name: "SERVICIOS OPERATIVOS", icon: "wrench", type: "expense", company: "manyumar" },
+const defaultCompanyCategories = [
+  { id: "manyumar-materiales", name: "MATERIALES", icon: "package", type: "expense", companyId: "manyumar" },
+  { id: "manyumar-semillas", name: "SEMILLAS", icon: "sprout", type: "expense", companyId: "manyumar" },
+  { id: "manyumar-serv-administrativos", name: "SERVICIOS ADMINISTRATIVOS", icon: "receipt", type: "expense", companyId: "manyumar" },
+  { id: "manyumar-serv-operativos", name: "SERVICIOS OPERATIVOS", icon: "wrench", type: "expense", companyId: "manyumar" },
+  { id: "servicio-materiales", name: "MATERIALES", icon: "package", type: "expense", companyId: "servicio" },
+  { id: "servicio-mantencion", name: "MANTENCIÓN", icon: "wrench", type: "expense", companyId: "servicio" },
+  { id: "servicio-sueldos", name: "SUELDOS", icon: "coins", type: "expense", companyId: "servicio" },
+  { id: "servicio-servicios", name: "SERVICIOS", icon: "receipt", type: "expense", companyId: "servicio" },
 ];
 
-const servicioExpenseCategories = [
-  { id: "servicio-materiales", name: "MATERIALES", icon: "package", type: "expense", company: "servicio" },
-  { id: "servicio-mantencion", name: "MANTENCIÓN", icon: "wrench", type: "expense", company: "servicio" },
-  { id: "servicio-sueldos", name: "SUELDOS", icon: "coins", type: "expense", company: "servicio" },
-  { id: "servicio-servicios", name: "SERVICIOS", icon: "receipt", type: "expense", company: "servicio" },
+const defaultCategoryDetails = [
+  { id: "so-mantenimiento", name: "MANTENCIÓN", icon: "wrench", parentCategoryId: "manyumar-serv-operativos" },
+  { id: "so-ser-cosecha", name: "SERVICIO DE COSECHA", icon: "wheat", parentCategoryId: "manyumar-serv-operativos" },
+  { id: "so-ser-siembra", name: "SERVICIO DE SIEMBRA", icon: "sprout", parentCategoryId: "manyumar-serv-operativos" },
+  { id: "servicio-documentos", name: "DOCUMENTOS", icon: "receipt", parentCategoryId: "servicio-servicios" },
+  { id: "sa-acuatecma", name: "ACUATECMA", icon: "landmark", parentCategoryId: "manyumar-serv-administrativos" },
+  { id: "sa-clave-internet-factura", name: "CLAVE INTERNET FACTURA", icon: "receipt", parentCategoryId: "manyumar-serv-administrativos" },
+  { id: "sa-contador", name: "CONTADOR", icon: "receipt", parentCategoryId: "manyumar-serv-administrativos" },
+  { id: "sa-infa", name: "INFA", icon: "landmark", parentCategoryId: "manyumar-serv-administrativos" },
+  { id: "sa-patente", name: "PATENTE", icon: "receipt", parentCategoryId: "manyumar-serv-administrativos" },
+  { id: "sa-u-de-chile", name: "UNIVERSIDAD DE CHILE", icon: "landmark", parentCategoryId: "manyumar-serv-administrativos" },
 ];
 
-const expenseCategoryDetails = {
-  "manyumar-serv-operativos": [
-    { id: "so-mantenimiento", name: "MANTENCIÓN", icon: "wrench" },
-    { id: "so-ser-cosecha", name: "SERVICIO DE COSECHA", icon: "wheat" },
-    { id: "so-ser-siembra", name: "SERVICIO DE SIEMBRA", icon: "sprout" },
-  ],
-  "servicio-servicios": [
-    { id: "servicio-documentos", name: "DOCUMENTOS", icon: "receipt" },
-  ],
-  "manyumar-serv-administrativos": [
-    { id: "sa-acuatecma", name: "ACUATECMA", icon: "landmark" },
-    { id: "sa-clave-internet-factura", name: "CLAVE INTERNET FACTURA", icon: "receipt" },
-    { id: "sa-contador", name: "CONTADOR", icon: "receipt" },
-    { id: "sa-infa", name: "INFA", icon: "landmark" },
-    { id: "sa-patente", name: "PATENTE", icon: "receipt" },
-    { id: "sa-u-de-chile", name: "UNIVERSIDAD DE CHILE", icon: "landmark" },
-  ],
-};
-
-const incomeOriginOptions = [
+const defaultIncomeOrigins = [
   { id: "brushel", name: "BRUSHEL", icon: "landmark" },
   { id: "com-caniggia", name: "COM.CANIGGIA", icon: "landmark" },
   { id: "landes", name: "LANDES", icon: "landmark" },
@@ -100,6 +93,8 @@ const incomeOriginOptions = [
   { id: "sudmaris", name: "SUDMARIS", icon: "landmark" },
   { id: "trans-antartic", name: "TRANS ANTARTIC", icon: "landmark" },
 ];
+
+// ─── Icon registry ────────────────────────────────────────────────────────────
 
 const categoryIconComponents = {
   sprout: Sprout,
@@ -145,6 +140,8 @@ const selectableCategoryIcons = [
   { key: "coins", Icon: Coins },
 ];
 
+// ─── Formatters ───────────────────────────────────────────────────────────────
+
 const formatter = new Intl.NumberFormat("es-CL", {
   style: "currency",
   currency: "CLP",
@@ -155,19 +152,11 @@ const amountInputFormatter = new Intl.NumberFormat("es-CL", {
   maximumFractionDigits: 0,
 });
 const spanishMonths = [
-  "enero",
-  "febrero",
-  "marzo",
-  "abril",
-  "mayo",
-  "junio",
-  "julio",
-  "agosto",
-  "septiembre",
-  "octubre",
-  "noviembre",
-  "diciembre",
+  "enero", "febrero", "marzo", "abril", "mayo", "junio",
+  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
 ];
+
+// ─── Hooks & helpers ──────────────────────────────────────────────────────────
 
 function useStoredState(key, initialValue) {
   const [value, setValue] = useState(() => {
@@ -261,15 +250,21 @@ function CategoryBadge({ category, compact = false }) {
   );
 }
 
+// ─── App ──────────────────────────────────────────────────────────────────────
+
 function App() {
   const [view, setView] = useState("home");
   const [selectedMonth, setSelectedMonth] = useState(() => firstDayOfMonth());
   const [transactions, setTransactions] = useStoredState("manyumar.transactions", []);
   const [categories, setCategories] = useStoredState("manyumar.categories.v4", [
-    ...expenseCategories,
-    ...incomeCategories,
+    ...defaultExpenseCategories,
+    ...defaultIncomeCategories,
   ]);
   const [accounts, setAccounts] = useStoredState("manyumar.accounts", defaultAccounts);
+  const [companies, setCompanies] = useStoredState("manyumar.companies", defaultCompanies);
+  const [companyCategories, setCompanyCategories] = useStoredState("manyumar.companyCategories", defaultCompanyCategories);
+  const [categoryDetails, setCategoryDetails] = useStoredState("manyumar.categoryDetails", defaultCategoryDetails);
+  const [incomeOrigins, setIncomeOrigins] = useStoredState("manyumar.incomeOrigins", defaultIncomeOrigins);
   const [transactionModal, setTransactionModal] = useState(null);
   const [settingsPanel, setSettingsPanel] = useState(null);
 
@@ -294,18 +289,26 @@ function App() {
   }, [monthTransactions]);
 
   const lookupCategories = useMemo(
-    () => [...categories, ...manyumarExpenseCategories, ...servicioExpenseCategories],
-    [categories],
+    () => [...categories, ...companyCategories],
+    [categories, companyCategories],
   );
 
   const context = {
     accounts,
     categories,
+    categoryDetails,
+    companies,
+    companyCategories,
+    incomeOrigins,
     lookupCategories,
     monthTransactions,
     selectedMonth,
     setAccounts,
     setCategories,
+    setCategoryDetails,
+    setCompanies,
+    setCompanyCategories,
+    setIncomeOrigins,
     setSelectedMonth,
     setSettingsPanel,
     setTransactionModal,
@@ -327,12 +330,20 @@ function App() {
         {view === "settings" && <SettingsView setView={setView} />}
         {view === "categories" && <CategoriesView {...context} />}
         {view === "accounts" && <AccountsView {...context} />}
+        {view === "companies" && <CompaniesView {...context} />}
+        {view === "companyCategories" && <CompanyCategoriesView {...context} />}
+        {view === "categoryDetails" && <CategoryDetailsView {...context} />}
+        {view === "incomeOrigins" && <IncomeOriginsView {...context} />}
       </main>
       <BottomNav view={view} setView={setView} onAdd={() => setTransactionModal({ type: "expense" })} />
       {transactionModal && (
         <TransactionSheet
           accounts={accounts}
           categories={categories}
+          categoryDetails={categoryDetails}
+          companies={companies}
+          companyCategories={companyCategories}
+          incomeOrigins={incomeOrigins}
           onClose={() => setTransactionModal(null)}
           onSave={(transaction) => {
             setTransactions((current) => [{ ...transaction, id: crypto.randomUUID() }, ...current]);
@@ -344,6 +355,8 @@ function App() {
     </div>
   );
 }
+
+// ─── Header ───────────────────────────────────────────────────────────────────
 
 function Header({ onAdd }) {
   return (
@@ -370,6 +383,8 @@ function IconButton({ children, label, tone, onClick }) {
     </button>
   );
 }
+
+// ─── Navigation ───────────────────────────────────────────────────────────────
 
 function BottomNav({ view, setView, onAdd }) {
   const items = [
@@ -405,6 +420,8 @@ function NavButton({ item, active, onClick }) {
     </button>
   );
 }
+
+// ─── Home ─────────────────────────────────────────────────────────────────────
 
 function HomeView({ lookupCategories, monthTransactions, selectedMonth, totals }) {
   const latest = [...monthTransactions].sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
@@ -469,6 +486,8 @@ function SummaryCard({ title, value, type }) {
     </Card>
   );
 }
+
+// ─── Ledger ───────────────────────────────────────────────────────────────────
 
 function LedgerView({
   lookupCategories,
@@ -571,6 +590,8 @@ function EmptyLedger({ action, onAdd, text }) {
   );
 }
 
+// ─── Settings ─────────────────────────────────────────────────────────────────
+
 function SettingsView({ setView }) {
   return (
     <section className="page-stack settings-page">
@@ -579,10 +600,11 @@ function SettingsView({ setView }) {
         <p>Personaliza tu experiencia</p>
       </div>
       <Card className="settings-card">
+        <p className="section-label" style={{ padding: "0 4px 4px", fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.5 }}>General</p>
         <SettingsRow
           icon={Tags}
           title="Categorías"
-          description="Gestiona tus categorías"
+          description="Gestiona tus categorías de transacciones"
           onClick={() => setView("categories")}
         />
         <SettingsRow
@@ -590,6 +612,33 @@ function SettingsView({ setView }) {
           title="Cuentas"
           description="Administra tus cuentas bancarias"
           onClick={() => setView("accounts")}
+        />
+      </Card>
+      <Card className="settings-card">
+        <p className="section-label" style={{ padding: "0 4px 4px", fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.5 }}>Selectores</p>
+        <SettingsRow
+          icon={Tractor}
+          title="Empresas"
+          description="Configura las empresas disponibles"
+          onClick={() => setView("companies")}
+        />
+        <SettingsRow
+          icon={Package}
+          title="Categorías de empresa"
+          description="Categorías de gasto por empresa"
+          onClick={() => setView("companyCategories")}
+        />
+        <SettingsRow
+          icon={Receipt}
+          title="Detalles de categoría"
+          description="Subcategorías y detalles configurables"
+          onClick={() => setView("categoryDetails")}
+        />
+        <SettingsRow
+          icon={Landmark}
+          title="Orígenes de ingreso"
+          description="Empresas y fuentes de ingreso"
+          onClick={() => setView("incomeOrigins")}
         />
       </Card>
       <div className="version">
@@ -614,6 +663,8 @@ function SettingsRow({ description, icon: Icon, onClick, title }) {
     </button>
   );
 }
+
+// ─── Categories (general) ─────────────────────────────────────────────────────
 
 function CategoriesView({ categories, setCategories, setSettingsPanel, settingsPanel, setView }) {
   const expenses = categories.filter((category) => category.type === "expense");
@@ -672,14 +723,9 @@ function CategorySection({ categories, onDelete, title, tone }) {
   );
 }
 
-function AccountsView({
-  accounts,
-  setAccounts,
-  setSettingsPanel,
-  settingsPanel,
-  setView,
-  transactions,
-}) {
+// ─── Accounts ─────────────────────────────────────────────────────────────────
+
+function AccountsView({ accounts, setAccounts, setSettingsPanel, settingsPanel, setView, transactions }) {
   return (
     <section className="page-stack manage-page">
       <ManageHeader count={`${accounts.length} cuentas`} title="Cuentas" onBack={() => setView("settings")} />
@@ -720,6 +766,223 @@ function AccountsView({
   );
 }
 
+// ─── Companies ────────────────────────────────────────────────────────────────
+
+function CompaniesView({ companies, setCompanies, setSettingsPanel, settingsPanel, setView }) {
+  return (
+    <section className="page-stack manage-page">
+      <ManageHeader count={`${companies.length} empresas`} title="Empresas" onBack={() => setView("settings")} />
+      <button
+        className="outline-action full"
+        onClick={() => setSettingsPanel(settingsPanel === "company" ? null : "company")}
+      >
+        <Plus size={16} />
+        Nueva empresa
+      </button>
+      {settingsPanel === "company" && (
+        <NewItemPanel
+          title="Nueva empresa"
+          namePlaceholder="Nombre de la empresa"
+          defaultIcon="tractor"
+          onClose={() => setSettingsPanel(null)}
+          onSave={(item) => {
+            setCompanies((current) => [...current, { ...item, id: crypto.randomUUID() }]);
+            setSettingsPanel(null);
+          }}
+        />
+      )}
+      <Card className="managed-card flat">
+        <div className="managed-list">
+          {companies.map((company) => (
+            <div className="managed-row" key={company.id}>
+              <span className="managed-main">
+                <CategoryBadge category={{ ...company, type: "expense" }} />
+                <strong>{company.name}</strong>
+              </span>
+              <button
+                aria-label="Eliminar"
+                onClick={() => setCompanies((current) => current.filter((c) => c.id !== company.id))}
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
+          ))}
+        </div>
+      </Card>
+    </section>
+  );
+}
+
+// ─── Company Categories ───────────────────────────────────────────────────────
+
+function CompanyCategoriesView({ companies, companyCategories, setCompanyCategories, setSettingsPanel, settingsPanel, setView }) {
+  return (
+    <section className="page-stack manage-page">
+      <ManageHeader
+        count={`${companyCategories.length} categorías`}
+        title="Categorías de empresa"
+        onBack={() => setView("settings")}
+      />
+      <button
+        className="outline-action full"
+        onClick={() => setSettingsPanel(settingsPanel === "companyCategory" ? null : "companyCategory")}
+      >
+        <Plus size={16} />
+        Nueva categoría de empresa
+      </button>
+      {settingsPanel === "companyCategory" && (
+        <NewCompanyCategoryPanel
+          companies={companies}
+          onClose={() => setSettingsPanel(null)}
+          onSave={(item) => {
+            setCompanyCategories((current) => [...current, { ...item, id: crypto.randomUUID(), type: "expense" }]);
+            setSettingsPanel(null);
+          }}
+        />
+      )}
+      {companies.map((company) => {
+        const cats = companyCategories.filter((c) => c.companyId === company.id);
+        if (cats.length === 0) return null;
+        return (
+          <Card className="managed-card" key={company.id}>
+            <p className="section-label expense">{company.name}</p>
+            <div className="managed-list">
+              {cats.map((cat) => (
+                <div className="managed-row" key={cat.id}>
+                  <span className="managed-main">
+                    <CategoryBadge category={cat} />
+                    <strong>{cat.name}</strong>
+                  </span>
+                  <button
+                    aria-label="Eliminar"
+                    onClick={() => setCompanyCategories((current) => current.filter((c) => c.id !== cat.id))}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </Card>
+        );
+      })}
+    </section>
+  );
+}
+
+// ─── Category Details ─────────────────────────────────────────────────────────
+
+function CategoryDetailsView({ categoryDetails, companyCategories, setCategoryDetails, setSettingsPanel, settingsPanel, setView }) {
+  const parentCats = companyCategories.filter((c) =>
+    categoryDetails.some((d) => d.parentCategoryId === c.id)
+  );
+  const allParentIds = [...new Set(categoryDetails.map((d) => d.parentCategoryId))];
+  const allParents = allParentIds.map((id) => companyCategories.find((c) => c.id === id)).filter(Boolean);
+
+  return (
+    <section className="page-stack manage-page">
+      <ManageHeader
+        count={`${categoryDetails.length} detalles`}
+        title="Detalles de categoría"
+        onBack={() => setView("settings")}
+      />
+      <button
+        className="outline-action full"
+        onClick={() => setSettingsPanel(settingsPanel === "categoryDetail" ? null : "categoryDetail")}
+      >
+        <Plus size={16} />
+        Nuevo detalle
+      </button>
+      {settingsPanel === "categoryDetail" && (
+        <NewCategoryDetailPanel
+          companyCategories={companyCategories}
+          onClose={() => setSettingsPanel(null)}
+          onSave={(item) => {
+            setCategoryDetails((current) => [...current, { ...item, id: crypto.randomUUID() }]);
+            setSettingsPanel(null);
+          }}
+        />
+      )}
+      {allParents.map((parent) => {
+        const details = categoryDetails.filter((d) => d.parentCategoryId === parent.id);
+        return (
+          <Card className="managed-card" key={parent.id}>
+            <p className="section-label expense">{parent.name}</p>
+            <div className="managed-list">
+              {details.map((detail) => (
+                <div className="managed-row" key={detail.id}>
+                  <span className="managed-main">
+                    <CategoryBadge category={{ ...detail, type: "expense" }} />
+                    <strong>{detail.name}</strong>
+                  </span>
+                  <button
+                    aria-label="Eliminar"
+                    onClick={() => setCategoryDetails((current) => current.filter((d) => d.id !== detail.id))}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </Card>
+        );
+      })}
+    </section>
+  );
+}
+
+// ─── Income Origins ───────────────────────────────────────────────────────────
+
+function IncomeOriginsView({ incomeOrigins, setIncomeOrigins, setSettingsPanel, settingsPanel, setView }) {
+  return (
+    <section className="page-stack manage-page">
+      <ManageHeader
+        count={`${incomeOrigins.length} orígenes`}
+        title="Orígenes de ingreso"
+        onBack={() => setView("settings")}
+      />
+      <button
+        className="outline-action full"
+        onClick={() => setSettingsPanel(settingsPanel === "incomeOrigin" ? null : "incomeOrigin")}
+      >
+        <Plus size={16} />
+        Nuevo origen
+      </button>
+      {settingsPanel === "incomeOrigin" && (
+        <NewItemPanel
+          title="Nuevo origen"
+          namePlaceholder="Nombre del origen"
+          defaultIcon="landmark"
+          onClose={() => setSettingsPanel(null)}
+          onSave={(item) => {
+            setIncomeOrigins((current) => [...current, { ...item, id: crypto.randomUUID() }]);
+            setSettingsPanel(null);
+          }}
+        />
+      )}
+      <Card className="managed-card flat">
+        <div className="managed-list">
+          {incomeOrigins.map((origin) => (
+            <div className="managed-row" key={origin.id}>
+              <span className="managed-main">
+                <CategoryBadge category={{ ...origin, type: "income" }} />
+                <strong>{origin.name}</strong>
+              </span>
+              <button
+                aria-label="Eliminar"
+                onClick={() => setIncomeOrigins((current) => current.filter((o) => o.id !== origin.id))}
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
+          ))}
+        </div>
+      </Card>
+    </section>
+  );
+}
+
+// ─── Shared manage components ─────────────────────────────────────────────────
+
 function ManageHeader({ count, onBack, title }) {
   return (
     <div className="manage-header">
@@ -744,22 +1007,16 @@ function NewCategoryPanel({ onClose, onSave }) {
       <FormHeader title="Nueva categoría" onClose={onClose} />
       <label>
         Nombre
-        <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Nombre de la categoría" />
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre de la categoría" />
       </label>
       <label>
         Tipo
-        <select value={type} onChange={(event) => setType(event.target.value)}>
+        <select value={type} onChange={(e) => setType(e.target.value)}>
           <option value="expense">Egreso</option>
           <option value="income">Ingreso</option>
         </select>
       </label>
-      <div className="icon-picker" aria-label="Icono">
-        {selectableCategoryIcons.map(({ key, Icon }) => (
-          <button className={icon === key ? "selected" : ""} key={key} type="button" onClick={() => setIcon(key)}>
-            <Icon size={16} strokeWidth={1.75} />
-          </button>
-        ))}
-      </div>
+      <IconPicker selected={icon} onChange={setIcon} />
       <button className="submit neutral" disabled={!name.trim()} onClick={() => onSave({ name: name.trim(), icon, type })}>
         Agregar categoría
       </button>
@@ -776,7 +1033,7 @@ function NewAccountPanel({ onClose, onSave }) {
       <FormHeader title="Nueva cuenta" onClose={onClose} />
       <label>
         Nombre
-        <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Nombre de la cuenta" />
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre de la cuenta" />
       </label>
       <label className="amount-label">
         Saldo inicial
@@ -787,7 +1044,7 @@ function NewAccountPanel({ onClose, onSave }) {
             type="number"
             min="0"
             value={balance}
-            onChange={(event) => setBalance(event.target.value)}
+            onChange={(e) => setBalance(e.target.value)}
             placeholder="0"
           />
         </span>
@@ -803,6 +1060,109 @@ function NewAccountPanel({ onClose, onSave }) {
   );
 }
 
+/** Generic panel: name + icon picker. Used for companies and income origins. */
+function NewItemPanel({ title, namePlaceholder, defaultIcon, onClose, onSave }) {
+  const [name, setName] = useState("");
+  const [icon, setIcon] = useState(defaultIcon);
+
+  return (
+    <Card className="inline-form">
+      <FormHeader title={title} onClose={onClose} />
+      <label>
+        Nombre
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder={namePlaceholder} />
+      </label>
+      <IconPicker selected={icon} onChange={setIcon} />
+      <button className="submit neutral" disabled={!name.trim()} onClick={() => onSave({ name: name.trim(), icon })}>
+        Agregar
+      </button>
+    </Card>
+  );
+}
+
+/** Panel for a new company category: name + company selector + icon. */
+function NewCompanyCategoryPanel({ companies, onClose, onSave }) {
+  const [name, setName] = useState("");
+  const [companyId, setCompanyId] = useState(companies[0]?.id || "");
+  const [icon, setIcon] = useState("package");
+
+  return (
+    <Card className="inline-form">
+      <FormHeader title="Nueva categoría de empresa" onClose={onClose} />
+      <label>
+        Nombre
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre de la categoría" />
+      </label>
+      <label>
+        Empresa
+        <select value={companyId} onChange={(e) => setCompanyId(e.target.value)}>
+          {companies.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+      </label>
+      <IconPicker selected={icon} onChange={setIcon} />
+      <button
+        className="submit neutral"
+        disabled={!name.trim() || !companyId}
+        onClick={() => onSave({ name: name.trim(), icon, companyId })}
+      >
+        Agregar
+      </button>
+    </Card>
+  );
+}
+
+/** Panel for a new category detail: name + parent category selector + icon. */
+function NewCategoryDetailPanel({ companyCategories, onClose, onSave }) {
+  const [name, setName] = useState("");
+  const [parentCategoryId, setParentCategoryId] = useState(companyCategories[0]?.id || "");
+  const [icon, setIcon] = useState("receipt");
+
+  return (
+    <Card className="inline-form">
+      <FormHeader title="Nuevo detalle de categoría" onClose={onClose} />
+      <label>
+        Nombre
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre del detalle" />
+      </label>
+      <label>
+        Categoría padre
+        <select value={parentCategoryId} onChange={(e) => setParentCategoryId(e.target.value)}>
+          {companyCategories.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+      </label>
+      <IconPicker selected={icon} onChange={setIcon} />
+      <button
+        className="submit neutral"
+        disabled={!name.trim() || !parentCategoryId}
+        onClick={() => onSave({ name: name.trim(), icon, parentCategoryId })}
+      >
+        Agregar
+      </button>
+    </Card>
+  );
+}
+
+function IconPicker({ selected, onChange }) {
+  return (
+    <div className="icon-picker" aria-label="Icono">
+      {selectableCategoryIcons.map(({ key, Icon }) => (
+        <button
+          className={selected === key ? "selected" : ""}
+          key={key}
+          type="button"
+          onClick={() => onChange(key)}
+        >
+          <Icon size={16} strokeWidth={1.75} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function FormHeader({ onClose, title }) {
   return (
     <div className="form-header">
@@ -814,7 +1174,19 @@ function FormHeader({ onClose, title }) {
   );
 }
 
-function TransactionSheet({ accounts, categories, onClose, onSave, type }) {
+// ─── Transaction Sheet ────────────────────────────────────────────────────────
+
+function TransactionSheet({
+  accounts,
+  categories,
+  categoryDetails,
+  companies,
+  companyCategories,
+  incomeOrigins,
+  onClose,
+  onSave,
+  type,
+}) {
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -830,34 +1202,33 @@ function TransactionSheet({ accounts, categories, onClose, onSave, type }) {
   }, [companyId]);
 
   useEffect(() => {
-    const categoryDetails = expenseCategoryDetails[categoryId] || null;
-    const autoDetailId = categoryDetails?.length === 1 ? categoryDetails[0].id : "";
+    const detailOptions = categoryDetails.filter((d) => d.parentCategoryId === categoryId);
+    const autoDetailId = detailOptions.length === 1 ? detailOptions[0].id : "";
     setDetailId((current) => (current === autoDetailId ? current : autoDetailId));
-  }, [categoryId]);
+  }, [categoryId, categoryDetails]);
 
-  const hasCompanyCategories = type === "expense" && ["manyumar", "servicio"].includes(companyId);
+  const hasCompanyCategories = type === "expense" && companies.some((c) => c.id === companyId);
   let categoryListForCompany = categories.filter((category) => category.type === type || category.type === "both");
-  if (hasCompanyCategories && companyId === "manyumar") {
-    categoryListForCompany = manyumarExpenseCategories;
-  }
-  if (hasCompanyCategories && companyId === "servicio") {
-    categoryListForCompany = servicioExpenseCategories;
+  if (hasCompanyCategories) {
+    categoryListForCompany = companyCategories.filter((c) => c.companyId === companyId);
   }
   const sortedCategories = hasCompanyCategories
     ? categoryListForCompany
     : [...categoryListForCompany].sort((a, b) => a.name.localeCompare(b.name, "es"));
 
   const selectedCategory = categoryListForCompany.find((category) => category.id === categoryId);
-  const selectedCompany = companyOptions.find((company) => company.id === companyId);
-  const selectedIncomeOrigin = incomeOriginOptions.find((origin) => origin.id === incomeOriginId);
-  const detailOptions = expenseCategoryDetails[categoryId] || null;
-  const selectedDetail = detailOptions?.find((detail) => detail.id === detailId);
+  const selectedCompany = companies.find((company) => company.id === companyId);
+  const selectedIncomeOrigin = incomeOrigins.find((origin) => origin.id === incomeOriginId);
+  const detailOptions = categoryDetails.filter((d) => d.parentCategoryId === categoryId);
+  const hasDetails = detailOptions.length > 0;
+  const selectedDetail = detailOptions.find((detail) => detail.id === detailId);
+
   const valid =
     parseAmountInput(amount) > 0 &&
     categoryId &&
     companyId &&
     (type !== "income" || incomeOriginId) &&
-    (!detailOptions || detailId) &&
+    (!hasDetails || detailId) &&
     date &&
     accountId;
   const noun = type === "expense" ? "gasto" : "ingreso";
@@ -877,7 +1248,7 @@ function TransactionSheet({ accounts, categories, onClose, onSave, type }) {
                 autoFocus
                 autoComplete="off"
                 inputMode="numeric"
-                onChange={(event) => setAmount(formatAmountInput(event.target.value))}
+                onChange={(e) => setAmount(formatAmountInput(e.target.value))}
                 placeholder="0"
                 type="text"
                 value={amount}
@@ -894,7 +1265,7 @@ function TransactionSheet({ accounts, categories, onClose, onSave, type }) {
           />
           {openSelect === "company" && (
             <OptionList
-              items={companyOptions}
+              items={companies}
               selectedId={companyId}
               onSelect={(id) => {
                 setCompanyId(id);
@@ -928,7 +1299,7 @@ function TransactionSheet({ accounts, categories, onClose, onSave, type }) {
             </div>
           )}
 
-          {detailOptions && (
+          {hasDetails && (
             <>
               <PickerField
                 label="Detalle"
@@ -961,7 +1332,7 @@ function TransactionSheet({ accounts, categories, onClose, onSave, type }) {
               />
               {openSelect === "incomeOrigin" && (
                 <OptionList
-                  items={incomeOriginOptions}
+                  items={incomeOrigins}
                   selectedId={incomeOriginId}
                   onSelect={(id) => {
                     setIncomeOriginId(id);
@@ -975,7 +1346,7 @@ function TransactionSheet({ accounts, categories, onClose, onSave, type }) {
           <label>
             Fecha
             <span className="date-field">
-              <input aria-label="Fecha" onChange={(event) => setDate(event.target.value)} type="date" value={date} />
+              <input aria-label="Fecha" onChange={(e) => setDate(e.target.value)} type="date" value={date} />
               <CalendarDays size={18} />
             </span>
           </label>
@@ -984,7 +1355,7 @@ function TransactionSheet({ accounts, categories, onClose, onSave, type }) {
             Descripción
             <input
               aria-label="Descripción"
-              onChange={(event) => setDescription(event.target.value)}
+              onChange={(e) => setDescription(e.target.value)}
               placeholder="Opcional"
               value={description}
             />
@@ -1003,8 +1374,8 @@ function TransactionSheet({ accounts, categories, onClose, onSave, type }) {
                 createdAt: new Date().toISOString(),
                 date,
                 description: description.trim() || selectedCategory?.name || noun,
-                detailId: detailOptions ? detailId : "",
-                detailName: detailOptions ? selectedDetail?.name || "" : "",
+                detailId: hasDetails ? detailId : "",
+                detailName: hasDetails ? selectedDetail?.name || "" : "",
                 incomeOriginId: type === "income" ? incomeOriginId : "",
                 incomeOriginName: type === "income" ? selectedIncomeOrigin?.name || "" : "",
                 type,
@@ -1018,6 +1389,8 @@ function TransactionSheet({ accounts, categories, onClose, onSave, type }) {
     </div>
   );
 }
+
+// ─── Shared primitives ────────────────────────────────────────────────────────
 
 function PickerField({ label, onToggle, open, placeholder, selected }) {
   return (
@@ -1057,6 +1430,8 @@ function EmptyState({ compact, detail, text }) {
     </div>
   );
 }
+
+// ─── Transaction display ──────────────────────────────────────────────────────
 
 function MovementRow({ categories, transaction }) {
   const category = categories.find((item) => item.id === transaction.categoryId);
@@ -1107,6 +1482,8 @@ function TransactionInfo({ category, showDate = false, transaction }) {
     </span>
   );
 }
+
+// ─── Pure helpers ─────────────────────────────────────────────────────────────
 
 function categoryTotals(transactions, categories, type) {
   const totals = new Map();
