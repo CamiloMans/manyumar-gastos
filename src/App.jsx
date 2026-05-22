@@ -65,11 +65,21 @@ const manyumarExpenseCategories = [
   { id: "manyumar-serv-operativos", name: "SERVICIOS OPERATIVOS", icon: "wrench", type: "expense", company: "manyumar" },
 ];
 
+const servicioExpenseCategories = [
+  { id: "servicio-materiales", name: "MATERIALES", icon: "package", type: "expense", company: "servicio" },
+  { id: "servicio-mantencion", name: "MANTENCIÓN", icon: "wrench", type: "expense", company: "servicio" },
+  { id: "servicio-sueldos", name: "SUELDOS", icon: "coins", type: "expense", company: "servicio" },
+  { id: "servicio-servicios", name: "SERVICIOS", icon: "receipt", type: "expense", company: "servicio" },
+];
+
 const expenseCategoryDetails = {
   "manyumar-serv-operativos": [
-    { id: "so-mantenimiento", name: "MANTENIMIENTO", icon: "wrench" },
-    { id: "so-ser-cosecha", name: "SER. COSECHA", icon: "wheat" },
-    { id: "so-ser-siembra", name: "SER. SIEMBRA", icon: "sprout" },
+    { id: "so-mantenimiento", name: "MANTENCIÓN", icon: "wrench" },
+    { id: "so-ser-cosecha", name: "SERVICIO DE COSECHA", icon: "wheat" },
+    { id: "so-ser-siembra", name: "SERVICIO DE SIEMBRA", icon: "sprout" },
+  ],
+  "servicio-servicios": [
+    { id: "servicio-documentos", name: "DOCUMENTOS", icon: "receipt" },
   ],
   "manyumar-serv-administrativos": [
     { id: "sa-acuatecma", name: "ACUATECMA", icon: "landmark" },
@@ -135,10 +145,11 @@ const selectableCategoryIcons = [
   { key: "coins", Icon: Coins },
 ];
 
-const formatter = new Intl.NumberFormat("en-US", {
+const formatter = new Intl.NumberFormat("es-CL", {
   style: "currency",
-  currency: "USD",
-  minimumFractionDigits: 2,
+  currency: "CLP",
+  maximumFractionDigits: 0,
+  minimumFractionDigits: 0,
 });
 const amountInputFormatter = new Intl.NumberFormat("es-CL", {
   maximumFractionDigits: 0,
@@ -283,7 +294,7 @@ function App() {
   }, [monthTransactions]);
 
   const lookupCategories = useMemo(
-    () => [...categories, ...manyumarExpenseCategories],
+    () => [...categories, ...manyumarExpenseCategories, ...servicioExpenseCategories],
     [categories],
   );
 
@@ -419,7 +430,7 @@ function HomeView({ lookupCategories, monthTransactions, selectedMonth, totals }
           <div className="category-total-list">
             {expenseByCategory.map((item) => (
               <div className="category-total-row" key={item.id}>
-                <CategoryBadge category={item} />
+                <CategoryBadge category={item} compact />
                 <span>{item.name}</span>
                 <strong>{formatter.format(item.total)}</strong>
               </div>
@@ -819,14 +830,22 @@ function TransactionSheet({ accounts, categories, onClose, onSave, type }) {
   }, [companyId]);
 
   useEffect(() => {
-    setDetailId("");
+    const categoryDetails = expenseCategoryDetails[categoryId] || null;
+    const autoDetailId = categoryDetails?.length === 1 ? categoryDetails[0].id : "";
+    setDetailId((current) => (current === autoDetailId ? current : autoDetailId));
   }, [categoryId]);
 
-  const categoryListForCompany =
-    type === "expense" && companyId === "manyumar"
-      ? manyumarExpenseCategories
-      : categories.filter((category) => category.type === type || category.type === "both");
-  const sortedCategories = [...categoryListForCompany].sort((a, b) => a.name.localeCompare(b.name, "es"));
+  const hasCompanyCategories = type === "expense" && ["manyumar", "servicio"].includes(companyId);
+  let categoryListForCompany = categories.filter((category) => category.type === type || category.type === "both");
+  if (hasCompanyCategories && companyId === "manyumar") {
+    categoryListForCompany = manyumarExpenseCategories;
+  }
+  if (hasCompanyCategories && companyId === "servicio") {
+    categoryListForCompany = servicioExpenseCategories;
+  }
+  const sortedCategories = hasCompanyCategories
+    ? categoryListForCompany
+    : [...categoryListForCompany].sort((a, b) => a.name.localeCompare(b.name, "es"));
 
   const selectedCategory = categoryListForCompany.find((category) => category.id === categoryId);
   const selectedCompany = companyOptions.find((company) => company.id === companyId);
@@ -1043,15 +1062,8 @@ function MovementRow({ categories, transaction }) {
   const category = categories.find((item) => item.id === transaction.categoryId);
   return (
     <div className="movement-row">
-      <CategoryBadge category={category} />
-      <span>
-        <strong>{transaction.description}</strong>
-        <small>
-          {[shortDate(transaction.date), transaction.companyName, transaction.incomeOriginName, transaction.detailName]
-            .filter(Boolean)
-            .join(" · ")}
-        </small>
-      </span>
+      <CategoryBadge category={category} compact />
+      <TransactionInfo category={category} showDate transaction={transaction} />
       <b className={transaction.type}>
         {transaction.type === "expense" ? "-" : ""}
         {formatter.format(transaction.amount)}
@@ -1064,20 +1076,35 @@ function LedgerRow({ categories, onDelete, transaction }) {
   const category = categories.find((item) => item.id === transaction.categoryId);
   return (
     <div className="ledger-row">
-      <CategoryBadge category={category} />
-      <span className="ledger-name">
-        <strong>{transaction.description}</strong>
-        <small>
-          {[category?.name, transaction.companyName, transaction.incomeOriginName, transaction.detailName]
-            .filter(Boolean)
-            .join(" · ")}
-        </small>
-      </span>
+      <CategoryBadge category={category} compact />
+      <TransactionInfo category={category} transaction={transaction} />
       <b className={transaction.type}>{formatter.format(transaction.amount)}</b>
       <button aria-label="Eliminar" onClick={onDelete}>
         <Trash2 size={16} />
       </button>
     </div>
+  );
+}
+
+function TransactionInfo({ category, showDate = false, transaction }) {
+  const categoryName = category?.name || "Sin categoría";
+  const description = transaction.description?.trim();
+  const descriptionLine = description && description !== categoryName ? description : "";
+  const metaParts = [
+    descriptionLine,
+    showDate ? shortDate(transaction.date) : "",
+    transaction.companyName,
+    transaction.incomeOriginName,
+  ].filter(Boolean);
+
+  return (
+    <span className="transaction-info">
+      <span className="transaction-heading">
+        <strong>{categoryName}</strong>
+        {transaction.detailName && <em>{transaction.detailName}</em>}
+      </span>
+      {metaParts.length > 0 && <small>{metaParts.join(" · ")}</small>}
+    </span>
   );
 }
 
