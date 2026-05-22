@@ -1199,7 +1199,12 @@ function TransactionSheet({
 
   useEffect(() => {
     setCategoryId("");
+    setIncomeOriginId("");
   }, [companyId]);
+
+  useEffect(() => {
+    setIncomeOriginId("");
+  }, [categoryId]);
 
   useEffect(() => {
     const detailOptions = categoryDetails.filter((d) => d.parentCategoryId === categoryId);
@@ -1223,11 +1228,14 @@ function TransactionSheet({
   const hasDetails = detailOptions.length > 0;
   const selectedDetail = detailOptions.find((detail) => detail.id === detailId);
 
+  // "Comprador" field appears only when category is VENTA on an income transaction
+  const isVenta = type === "income" && selectedCategory?.id === "venta";
+
   const valid =
     parseAmountInput(amount) > 0 &&
     categoryId &&
     companyId &&
-    (type !== "income" || incomeOriginId) &&
+    (!isVenta || incomeOriginId) &&
     (!hasDetails || detailId) &&
     date &&
     accountId;
@@ -1321,12 +1329,12 @@ function TransactionSheet({
             </>
           )}
 
-          {type === "income" && (
+          {isVenta && (
             <>
               <PickerField
-                label="Origen de ingreso"
+                label="Comprador"
                 open={openSelect === "incomeOrigin"}
-                placeholder="Seleccionar origen"
+                placeholder="Seleccionar comprador"
                 selected={selectedIncomeOrigin?.name}
                 onToggle={() => setOpenSelect(openSelect === "incomeOrigin" ? null : "incomeOrigin")}
               />
