@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDownCircle,
   ArrowDownRight,
@@ -190,16 +190,25 @@ function monthTitle(date, titleCase = false) {
 }
 
 function isSameMonth(dateString, monthDate) {
-  const date = new Date(dateString);
+  const date = parseStoredDate(dateString);
   return date.getFullYear() === monthDate.getFullYear() && date.getMonth() === monthDate.getMonth();
 }
 
+function parseStoredDate(dateString) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+    const [year, month, day] = dateString.split("-").map(Number);
+    return new Date(year, month - 1, day);
+  }
+
+  return new Date(dateString);
+}
+
 function shortDate(dateString) {
-  return new Date(dateString).toLocaleDateString("es-CL", { day: "numeric", month: "short" });
+  return parseStoredDate(dateString).toLocaleDateString("es-CL", { day: "numeric", month: "short" });
 }
 
 function longDate(dateString) {
-  return new Date(dateString).toLocaleDateString("es-CL", {
+  return parseStoredDate(dateString).toLocaleDateString("es-CL", {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -335,7 +344,7 @@ function App() {
         {view === "categoryDetails" && <CategoryDetailsView {...context} />}
         {view === "incomeOrigins" && <IncomeOriginsView {...context} />}
       </main>
-      <BottomNav view={view} setView={setView} onAdd={() => setTransactionModal({ type: "expense" })} />
+      <BottomNav view={view} setView={setView} />
       {transactionModal && (
         <TransactionSheet
           accounts={accounts}
@@ -344,9 +353,25 @@ function App() {
           companies={companies}
           companyCategories={companyCategories}
           incomeOrigins={incomeOrigins}
+          initialTransaction={transactionModal.transaction}
           onClose={() => setTransactionModal(null)}
           onSave={(transaction) => {
-            setTransactions((current) => [{ ...transaction, id: crypto.randomUUID() }, ...current]);
+            const editingId = transactionModal.transaction?.id;
+            setTransactions((current) =>
+              editingId
+                ? current.map((item) =>
+                    item.id === editingId
+                      ? {
+                          ...transactionModal.transaction,
+                          ...transaction,
+                          id: editingId,
+                          createdAt: transactionModal.transaction.createdAt || transaction.createdAt,
+                          updatedAt: new Date().toISOString(),
+                        }
+                      : item,
+                  )
+                : [{ ...transaction, id: crypto.randomUUID() }, ...current],
+            );
             setTransactionModal(null);
           }}
           type={transactionModal.type}
@@ -386,7 +411,7 @@ function IconButton({ children, label, tone, onClick }) {
 
 // ─── Navigation ───────────────────────────────────────────────────────────────
 
-function BottomNav({ view, setView, onAdd }) {
+function BottomNav({ view, setView }) {
   const items = [
     { key: "home", label: "Inicio", icon: Home },
     { key: "expenses", label: "Gastos", icon: ArrowDownRight },
@@ -397,13 +422,7 @@ function BottomNav({ view, setView, onAdd }) {
   return (
     <nav className="bottom-nav" aria-label="Navegación principal">
       <div className="bottom-nav-inner">
-        {items.slice(0, 2).map((item) => (
-          <NavButton key={item.key} item={item} active={view === item.key} onClick={() => setView(item.key)} />
-        ))}
-        <button className="nav-add" aria-label="Agregar transacción" title="Agregar transacción" onClick={onAdd}>
-          <Plus size={26} />
-        </button>
-        {items.slice(2).map((item) => (
+        {items.map((item) => (
           <NavButton key={item.key} item={item} active={view === item.key} onClick={() => setView(item.key)} />
         ))}
       </div>
@@ -423,8 +442,10 @@ function NavButton({ item, active, onClick }) {
 
 // ─── Home ─────────────────────────────────────────────────────────────────────
 
-function HomeView({ lookupCategories, monthTransactions, selectedMonth, totals }) {
-  const latest = [...monthTransactions].sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
+function HomeView({ lookupCategories, monthTransactions, selectedMonth, setTransactionModal, totals }) {
+  const latest = [...monthTransactions].sort(
+    (a, b) => parseStoredDate(b.createdAt || b.date) - parseStoredDate(a.createdAt || a.date),
+  );
   const expenseByCategory = categoryTotals(monthTransactions, lookupCategories, "expense");
 
   return (
@@ -463,7 +484,12 @@ function HomeView({ lookupCategories, monthTransactions, selectedMonth, totals }
         ) : (
           <div className="movement-list">
             {latest.slice(0, 6).map((transaction) => (
-              <MovementRow key={transaction.id} transaction={transaction} categories={lookupCategories} />
+              <MovementRow
+                key={transaction.id}
+                transaction={transaction}
+                categories={lookupCategories}
+                onEdit={() => setTransactionModal({ type: transaction.type, transaction })}
+              />
             ))}
           </div>
         )}
@@ -479,7 +505,7 @@ function SummaryCard({ title, value, type }) {
       <span className={cx("summary-icon", type)}>
         <Icon size={20} />
       </span>
-      <div>
+      <div className="summary-copy">
         <p>{title}</p>
         <strong className={type}>{formatter.format(value)}</strong>
       </div>
@@ -504,7 +530,7 @@ function LedgerView({
   const total = type === "expense" ? totals.expense : totals.income;
   const list = monthTransactions
     .filter((transaction) => transaction.type === type)
-    .sort((a, b) => new Date(b.date) - new Date(a.date));
+    .sort((a, b) => parseStoredDate(b.date) - parseStoredDate(a.date));
   const groups = groupByDate(list);
 
   return (
@@ -538,9 +564,13 @@ function LedgerView({
                   <LedgerRow
                     key={transaction.id}
                     categories={lookupCategories}
-                    onDelete={() =>
-                      setTransactions((current) => current.filter((item) => item.id !== transaction.id))
-                    }
+                    onDelete={() => {
+                      const confirmed = window.confirm("¿Eliminar este registro? Esta acción no se puede deshacer.");
+                      if (confirmed) {
+                        setTransactions((current) => current.filter((item) => item.id !== transaction.id));
+                      }
+                    }}
+                    onEdit={() => setTransactionModal({ type: transaction.type, transaction })}
                     transaction={transaction}
                   />
                 ))}
@@ -550,15 +580,6 @@ function LedgerView({
         </div>
       )}
 
-      {list.length > 0 && (
-        <button
-          className="floating-add"
-          aria-label={`Agregar ${type === "expense" ? "gasto" : "ingreso"}`}
-          onClick={() => setTransactionModal({ type })}
-        >
-          <Plus size={22} />
-        </button>
-      )}
     </section>
   );
 }
@@ -1183,33 +1204,48 @@ function TransactionSheet({
   companies,
   companyCategories,
   incomeOrigins,
+  initialTransaction,
   onClose,
   onSave,
   type,
 }) {
-  const [amount, setAmount] = useState("");
-  const [description, setDescription] = useState("");
-  const [categoryId, setCategoryId] = useState("");
-  const [companyId, setCompanyId] = useState("");
-  const [incomeOriginId, setIncomeOriginId] = useState("");
-  const [detailId, setDetailId] = useState("");
-  const [date, setDate] = useState(inputDate());
+  const isEditing = Boolean(initialTransaction?.id);
+  const [amount, setAmount] = useState(() =>
+    initialTransaction?.amount ? formatAmountInput(initialTransaction.amount) : "",
+  );
+  const [description, setDescription] = useState(() => initialTransaction?.description || "");
+  const [categoryId, setCategoryId] = useState(() => initialTransaction?.categoryId || "");
+  const [companyId, setCompanyId] = useState(() => initialTransaction?.companyId || "");
+  const [incomeOriginId, setIncomeOriginId] = useState(() => initialTransaction?.incomeOriginId || "");
+  const [detailId, setDetailId] = useState(() => initialTransaction?.detailId || "");
+  const [date, setDate] = useState(() => initialTransaction?.date || inputDate());
   const [openSelect, setOpenSelect] = useState(null);
-  const accountId = accounts[0]?.id || "main";
+  const accountId = initialTransaction?.accountId || accounts[0]?.id || "main";
+  const previousCompanyId = useRef(companyId);
+  const previousCategoryId = useRef(categoryId);
+  const previousDetailCategoryId = useRef(categoryId);
 
   useEffect(() => {
-    setCategoryId("");
-    setIncomeOriginId("");
+    if (previousCompanyId.current !== companyId) {
+      setCategoryId("");
+      setIncomeOriginId("");
+      previousCompanyId.current = companyId;
+    }
   }, [companyId]);
 
   useEffect(() => {
-    setIncomeOriginId("");
+    if (previousCategoryId.current !== categoryId) {
+      setIncomeOriginId("");
+      previousCategoryId.current = categoryId;
+    }
   }, [categoryId]);
 
   useEffect(() => {
+    if (previousDetailCategoryId.current === categoryId) return;
     const detailOptions = categoryDetails.filter((d) => d.parentCategoryId === categoryId);
     const autoDetailId = detailOptions.length === 1 ? detailOptions[0].id : "";
-    setDetailId((current) => (current === autoDetailId ? current : autoDetailId));
+    setDetailId(autoDetailId);
+    previousDetailCategoryId.current = categoryId;
   }, [categoryId, categoryDetails]);
 
   const hasCompanyCategories = type === "expense" && companies.some((c) => c.id === companyId);
@@ -1240,12 +1276,14 @@ function TransactionSheet({
     date &&
     accountId;
   const noun = type === "expense" ? "gasto" : "ingreso";
+  const actionLabel = isEditing ? "Guardar cambios" : `Registrar ${noun}`;
+  const sheetTitle = `${isEditing ? "Editar" : "Nuevo"} ${noun}`;
 
   return (
-    <div className="sheet-layer" role="dialog" aria-modal="true" aria-label={`Nuevo ${noun}`}>
+    <div className="sheet-layer" role="dialog" aria-modal="true" aria-label={sheetTitle}>
       <div className="sheet-backdrop" onClick={onClose} />
       <div className="transaction-sheet">
-        <FormHeader title={`Nuevo ${noun}`} onClose={onClose} />
+        <FormHeader title={sheetTitle} onClose={onClose} />
         <div className="sheet-body">
           <label className="amount-label">
             Monto
@@ -1390,7 +1428,7 @@ function TransactionSheet({
               })
             }
           >
-            Registrar {noun}
+            {actionLabel}
           </button>
         </div>
       </div>
@@ -1441,52 +1479,84 @@ function EmptyState({ compact, detail, text }) {
 
 // ─── Transaction display ──────────────────────────────────────────────────────
 
-function MovementRow({ categories, transaction }) {
+function handleTransactionRowKeyDown(event, onEdit) {
+  if (!onEdit || event.target.closest?.("button")) return;
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    onEdit();
+  }
+}
+
+function MovementRow({ categories, onEdit, transaction }) {
   const category = categories.find((item) => item.id === transaction.categoryId);
   return (
-    <div className="movement-row">
+    <div
+      className={cx("movement-row", onEdit && "editable-row")}
+      onClick={onEdit}
+      onKeyDown={(event) => handleTransactionRowKeyDown(event, onEdit)}
+      role={onEdit ? "button" : undefined}
+      tabIndex={onEdit ? 0 : undefined}
+    >
       <CategoryBadge category={category} compact />
-      <TransactionInfo category={category} showDate transaction={transaction} />
-      <b className={transaction.type}>
-        {transaction.type === "expense" ? "-" : ""}
-        {formatter.format(transaction.amount)}
-      </b>
+      <TransactionLines category={category} signedAmount transaction={transaction} />
     </div>
   );
 }
 
-function LedgerRow({ categories, onDelete, transaction }) {
+function LedgerRow({ categories, onDelete, onEdit, transaction }) {
   const category = categories.find((item) => item.id === transaction.categoryId);
   return (
-    <div className="ledger-row">
+    <div
+      className={cx("ledger-row", onEdit && "editable-row")}
+      onClick={onEdit}
+      onKeyDown={(event) => handleTransactionRowKeyDown(event, onEdit)}
+      role={onEdit ? "button" : undefined}
+      tabIndex={onEdit ? 0 : undefined}
+    >
       <CategoryBadge category={category} compact />
-      <TransactionInfo category={category} transaction={transaction} />
-      <b className={transaction.type}>{formatter.format(transaction.amount)}</b>
-      <button aria-label="Eliminar" onClick={onDelete}>
+      <TransactionLines category={category} transaction={transaction} />
+      <button
+        aria-label="Eliminar"
+        onClick={(event) => {
+          event.stopPropagation();
+          onDelete();
+        }}
+      >
         <Trash2 size={16} />
       </button>
     </div>
   );
 }
 
-function TransactionInfo({ category, showDate = false, transaction }) {
+function TransactionLines({ category, signedAmount = false, transaction }) {
   const categoryName = category?.name || "Sin categoría";
   const description = transaction.description?.trim();
-  const descriptionLine = description && description !== categoryName ? description : "";
+  const detailName = transaction.detailName?.trim();
+  const descriptionLine =
+    description && description !== categoryName && description !== detailName ? description : "";
   const metaParts = [
-    descriptionLine,
-    showDate ? shortDate(transaction.date) : "",
     transaction.companyName,
     transaction.incomeOriginName,
+    descriptionLine,
   ].filter(Boolean);
+  const amountPrefix = signedAmount && transaction.type === "expense" ? "-" : "";
 
   return (
-    <span className="transaction-info">
-      <span className="transaction-heading">
+    <span className="transaction-lines">
+      <span className="transaction-primary">
         <strong>{categoryName}</strong>
-        {transaction.detailName && <em>{transaction.detailName}</em>}
+        <b className={transaction.type}>
+          {amountPrefix}
+          {formatter.format(transaction.amount)}
+        </b>
       </span>
-      {metaParts.length > 0 && <small>{metaParts.join(" · ")}</small>}
+      {detailName && <em className="transaction-detail">{detailName}</em>}
+      <span className="transaction-meta">
+        <time dateTime={transaction.date}>{shortDate(transaction.date)}</time>
+        {metaParts.map((part, index) => (
+          <span key={`${part}-${index}`}>{part}</span>
+        ))}
+      </span>
     </span>
   );
 }
@@ -1517,7 +1587,7 @@ function groupByDate(transactions) {
     group.items.push(transaction);
     group.total += Number(transaction.amount);
   });
-  return [...groups.values()].sort((a, b) => new Date(b.date) - new Date(a.date));
+  return [...groups.values()].sort((a, b) => parseStoredDate(b.date) - parseStoredDate(a.date));
 }
 
 function addMonths(date, amount) {
