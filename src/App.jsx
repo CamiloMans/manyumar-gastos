@@ -44,6 +44,11 @@ import {
   deleteIncomeOrigin,
   deleteTransaction,
   loadManyumarData,
+  updateCategoryDetailIcon,
+  updateCategoryIcon,
+  updateCompanyCategoryIcon,
+  updateCompanyIcon,
+  updateIncomeOriginIcon,
   updateTransaction,
 } from "./manyumarRepository";
 
@@ -372,6 +377,17 @@ function App() {
     }
   };
 
+  const handleUpdateCategoryIcon = async (id, icon) => {
+    try {
+      const saved = await updateCategoryIcon(id, icon);
+      setCategories((current) => current.map((category) => (category.id === id ? saved : category)));
+      setSettingsPanel(null);
+      setDataError("");
+    } catch (error) {
+      reportDataError(error, "No se pudo actualizar el icono de la categoria en Supabase.");
+    }
+  };
+
   const handleCreateCompany = async (company) => {
     try {
       const saved = await createCompany({ ...company, id: crypto.randomUUID() });
@@ -398,6 +414,17 @@ function App() {
     }
   };
 
+  const handleUpdateCompanyIcon = async (id, icon) => {
+    try {
+      const saved = await updateCompanyIcon(id, icon);
+      setCompanies((current) => current.map((company) => (company.id === id ? saved : company)));
+      setSettingsPanel(null);
+      setDataError("");
+    } catch (error) {
+      reportDataError(error, "No se pudo actualizar el icono de la empresa en Supabase.");
+    }
+  };
+
   const handleCreateCompanyCategory = async (category) => {
     try {
       const saved = await createCompanyCategory({ ...category, id: crypto.randomUUID(), type: "expense" });
@@ -417,6 +444,17 @@ function App() {
       setDataError("");
     } catch (error) {
       reportDataError(error, "No se pudo eliminar la categoria de empresa en Supabase.");
+    }
+  };
+
+  const handleUpdateCompanyCategoryIcon = async (id, icon) => {
+    try {
+      const saved = await updateCompanyCategoryIcon(id, icon);
+      setCompanyCategories((current) => current.map((category) => (category.id === id ? saved : category)));
+      setSettingsPanel(null);
+      setDataError("");
+    } catch (error) {
+      reportDataError(error, "No se pudo actualizar el icono de la categoria de empresa en Supabase.");
     }
   };
 
@@ -441,6 +479,17 @@ function App() {
     }
   };
 
+  const handleUpdateCategoryDetailIcon = async (id, icon) => {
+    try {
+      const saved = await updateCategoryDetailIcon(id, icon);
+      setCategoryDetails((current) => current.map((detail) => (detail.id === id ? saved : detail)));
+      setSettingsPanel(null);
+      setDataError("");
+    } catch (error) {
+      reportDataError(error, "No se pudo actualizar el icono del detalle en Supabase.");
+    }
+  };
+
   const handleCreateIncomeOrigin = async (origin) => {
     try {
       const saved = await createIncomeOrigin({ ...origin, id: crypto.randomUUID() });
@@ -459,6 +508,17 @@ function App() {
       setDataError("");
     } catch (error) {
       reportDataError(error, "No se pudo eliminar el origen en Supabase.");
+    }
+  };
+
+  const handleUpdateIncomeOriginIcon = async (id, icon) => {
+    try {
+      const saved = await updateIncomeOriginIcon(id, icon);
+      setIncomeOrigins((current) => current.map((origin) => (origin.id === id ? saved : origin)));
+      setSettingsPanel(null);
+      setDataError("");
+    } catch (error) {
+      reportDataError(error, "No se pudo actualizar el icono del origen en Supabase.");
     }
   };
 
@@ -492,6 +552,11 @@ function App() {
     onDeleteCompany: handleDeleteCompany,
     onDeleteCompanyCategory: handleDeleteCompanyCategory,
     onDeleteIncomeOrigin: handleDeleteIncomeOrigin,
+    onUpdateCategoryIcon: handleUpdateCategoryIcon,
+    onUpdateCategoryDetailIcon: handleUpdateCategoryDetailIcon,
+    onUpdateCompanyIcon: handleUpdateCompanyIcon,
+    onUpdateCompanyCategoryIcon: handleUpdateCompanyCategoryIcon,
+    onUpdateIncomeOriginIcon: handleUpdateIncomeOriginIcon,
     dataError,
     isDataLoading,
     settingsPanel,
@@ -918,7 +983,15 @@ function SettingsRow({ description, icon: Icon, onClick, title }) {
 
 // ─── Categories (general) ─────────────────────────────────────────────────────
 
-function CategoriesView({ categories, onCreateCategory, onDeleteCategory, setSettingsPanel, settingsPanel, setView }) {
+function CategoriesView({
+  categories,
+  onCreateCategory,
+  onDeleteCategory,
+  onUpdateCategoryIcon,
+  setSettingsPanel,
+  settingsPanel,
+  setView,
+}) {
   const expenses = categories.filter((category) => category.type === "expense");
   const incomes = categories.filter((category) => category.type === "income");
 
@@ -940,35 +1013,86 @@ function CategoriesView({ categories, onCreateCategory, onDeleteCategory, setSet
         title="Egresos"
         tone="expense"
         onDelete={onDeleteCategory}
+        onIconChange={onUpdateCategoryIcon}
+        setSettingsPanel={setSettingsPanel}
+        settingsPanel={settingsPanel}
       />
       <CategorySection
         categories={incomes}
         title="Ingresos"
         tone="income"
         onDelete={onDeleteCategory}
+        onIconChange={onUpdateCategoryIcon}
+        setSettingsPanel={setSettingsPanel}
+        settingsPanel={settingsPanel}
       />
     </section>
   );
 }
 
-function CategorySection({ categories, onDelete, title, tone }) {
+function CategorySection({ categories, onDelete, onIconChange, setSettingsPanel, settingsPanel, title, tone }) {
   return (
     <Card className="managed-card">
       <p className={cx("section-label", tone)}>{title}</p>
       <div className="managed-list">
         {categories.map((category) => (
-          <div className="managed-row" key={category.id}>
-            <span className="managed-main">
-              <CategoryBadge category={category} />
-              <strong>{category.name}</strong>
-            </span>
-            <button aria-label="Eliminar" onClick={() => onDelete(category.id)}>
-              <Trash2 size={16} />
-            </button>
-          </div>
+          <ManagedItemRow
+            item={category}
+            key={category.id}
+            onDelete={onDelete}
+            onIconChange={onIconChange}
+            panelKind="category"
+            setSettingsPanel={setSettingsPanel}
+            settingsPanel={settingsPanel}
+          />
         ))}
       </div>
     </Card>
+  );
+}
+
+function iconPanelKey(kind, id) {
+  return `icon:${kind}:${id}`;
+}
+
+function ManagedItemRow({
+  badgeCategory,
+  item,
+  onDelete,
+  onIconChange,
+  panelKind,
+  setSettingsPanel,
+  settingsPanel,
+}) {
+  const panelKey = iconPanelKey(panelKind, item.id);
+  const isEditingIcon = settingsPanel === panelKey;
+  const badge = badgeCategory || item;
+
+  return (
+    <>
+      <div className="managed-row">
+        <span className="managed-main">
+          <button
+            aria-expanded={isEditingIcon}
+            aria-label={`Cambiar icono de ${item.name}`}
+            className={cx("icon-edit-button", isEditingIcon && "active")}
+            onClick={() => setSettingsPanel(isEditingIcon ? null : panelKey)}
+            type="button"
+          >
+            <CategoryBadge category={badge} />
+          </button>
+          <strong>{item.name}</strong>
+        </span>
+        <button aria-label="Eliminar" onClick={() => onDelete(item.id)} type="button">
+          <Trash2 size={16} />
+        </button>
+      </div>
+      {isEditingIcon && (
+        <div className="managed-icon-editor">
+          <IconPicker selected={item.icon} onChange={(icon) => onIconChange(item.id, icon)} />
+        </div>
+      )}
+    </>
   );
 }
 
@@ -976,7 +1100,15 @@ function CategorySection({ categories, onDelete, title, tone }) {
 
 // ─── Companies ────────────────────────────────────────────────────────────────
 
-function CompaniesView({ companies, onCreateCompany, onDeleteCompany, setSettingsPanel, settingsPanel, setView }) {
+function CompaniesView({
+  companies,
+  onCreateCompany,
+  onDeleteCompany,
+  onUpdateCompanyIcon,
+  setSettingsPanel,
+  settingsPanel,
+  setView,
+}) {
   return (
     <section className="page-stack manage-page">
       <ManageHeader count={`${companies.length} empresas`} title="Empresas" onBack={() => setView("settings")} />
@@ -999,18 +1131,16 @@ function CompaniesView({ companies, onCreateCompany, onDeleteCompany, setSetting
       <Card className="managed-card flat">
         <div className="managed-list">
           {companies.map((company) => (
-            <div className="managed-row" key={company.id}>
-              <span className="managed-main">
-                <CategoryBadge category={{ ...company, type: "expense" }} />
-                <strong>{company.name}</strong>
-              </span>
-              <button
-                aria-label="Eliminar"
-                onClick={() => onDeleteCompany(company.id)}
-              >
-                <Trash2 size={16} />
-              </button>
-            </div>
+            <ManagedItemRow
+              badgeCategory={{ ...company, type: "expense" }}
+              item={company}
+              key={company.id}
+              onDelete={onDeleteCompany}
+              onIconChange={onUpdateCompanyIcon}
+              panelKind="company"
+              setSettingsPanel={setSettingsPanel}
+              settingsPanel={settingsPanel}
+            />
           ))}
         </div>
       </Card>
@@ -1025,6 +1155,7 @@ function CompanyCategoriesView({
   companyCategories,
   onCreateCompanyCategory,
   onDeleteCompanyCategory,
+  onUpdateCompanyCategoryIcon,
   setSettingsPanel,
   settingsPanel,
   setView,
@@ -1058,18 +1189,15 @@ function CompanyCategoriesView({
             <p className="section-label expense">{company.name}</p>
             <div className="managed-list">
               {cats.map((cat) => (
-                <div className="managed-row" key={cat.id}>
-                  <span className="managed-main">
-                    <CategoryBadge category={cat} />
-                    <strong>{cat.name}</strong>
-                  </span>
-                  <button
-                    aria-label="Eliminar"
-                    onClick={() => onDeleteCompanyCategory(cat.id)}
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
+                <ManagedItemRow
+                  item={cat}
+                  key={cat.id}
+                  onDelete={onDeleteCompanyCategory}
+                  onIconChange={onUpdateCompanyCategoryIcon}
+                  panelKind="companyCategory"
+                  setSettingsPanel={setSettingsPanel}
+                  settingsPanel={settingsPanel}
+                />
               ))}
             </div>
           </Card>
@@ -1086,6 +1214,7 @@ function CategoryDetailsView({
   companyCategories,
   onCreateCategoryDetail,
   onDeleteCategoryDetail,
+  onUpdateCategoryDetailIcon,
   setSettingsPanel,
   settingsPanel,
   setView,
@@ -1124,18 +1253,16 @@ function CategoryDetailsView({
             <p className="section-label expense">{parent.name}</p>
             <div className="managed-list">
               {details.map((detail) => (
-                <div className="managed-row" key={detail.id}>
-                  <span className="managed-main">
-                    <CategoryBadge category={{ ...detail, type: "expense" }} />
-                    <strong>{detail.name}</strong>
-                  </span>
-                  <button
-                    aria-label="Eliminar"
-                    onClick={() => onDeleteCategoryDetail(detail.id)}
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
+                <ManagedItemRow
+                  badgeCategory={{ ...detail, type: "expense" }}
+                  item={detail}
+                  key={detail.id}
+                  onDelete={onDeleteCategoryDetail}
+                  onIconChange={onUpdateCategoryDetailIcon}
+                  panelKind="categoryDetail"
+                  setSettingsPanel={setSettingsPanel}
+                  settingsPanel={settingsPanel}
+                />
               ))}
             </div>
           </Card>
@@ -1147,7 +1274,15 @@ function CategoryDetailsView({
 
 // ─── Income Origins ───────────────────────────────────────────────────────────
 
-function IncomeOriginsView({ incomeOrigins, onCreateIncomeOrigin, onDeleteIncomeOrigin, setSettingsPanel, settingsPanel, setView }) {
+function IncomeOriginsView({
+  incomeOrigins,
+  onCreateIncomeOrigin,
+  onDeleteIncomeOrigin,
+  onUpdateIncomeOriginIcon,
+  setSettingsPanel,
+  settingsPanel,
+  setView,
+}) {
   return (
     <section className="page-stack manage-page">
       <ManageHeader
@@ -1174,18 +1309,16 @@ function IncomeOriginsView({ incomeOrigins, onCreateIncomeOrigin, onDeleteIncome
       <Card className="managed-card flat">
         <div className="managed-list">
           {incomeOrigins.map((origin) => (
-            <div className="managed-row" key={origin.id}>
-              <span className="managed-main">
-                <CategoryBadge category={{ ...origin, type: "income" }} />
-                <strong>{origin.name}</strong>
-              </span>
-              <button
-                aria-label="Eliminar"
-                onClick={() => onDeleteIncomeOrigin(origin.id)}
-              >
-                <Trash2 size={16} />
-              </button>
-            </div>
+            <ManagedItemRow
+              badgeCategory={{ ...origin, type: "income" }}
+              item={origin}
+              key={origin.id}
+              onDelete={onDeleteIncomeOrigin}
+              onIconChange={onUpdateIncomeOriginIcon}
+              panelKind="incomeOrigin"
+              setSettingsPanel={setSettingsPanel}
+              settingsPanel={settingsPanel}
+            />
           ))}
         </div>
       </Card>
@@ -1695,10 +1828,9 @@ function TransactionLines({ category, signedAmount = false, transaction }) {
   const descriptionLine =
     description && description !== categoryName && description !== detailName ? description : "";
   const metaParts = [
-    transaction.companyName,
-    transaction.incomeOriginName,
-    descriptionLine,
-  ].filter(Boolean);
+    { key: "company", value: transaction.companyName },
+    { key: "origin", value: transaction.incomeOriginName },
+  ].filter((part) => part.value);
   const amountPrefix = signedAmount && transaction.type === "expense" ? "-" : "";
 
   return (
@@ -1712,11 +1844,12 @@ function TransactionLines({ category, signedAmount = false, transaction }) {
       </span>
       <span className="transaction-meta">
         <time dateTime={transaction.date}>{shortDate(transaction.date)}</time>
-        {metaParts.map((part, index) => (
-          <span key={`${part}-${index}`}>{part}</span>
+        {metaParts.map((part) => (
+          <span key={part.key}>{part.value}</span>
         ))}
       </span>
       {detailName && <em className="transaction-detail">{detailName}</em>}
+      {descriptionLine && <em className="transaction-description-row">{descriptionLine}</em>}
     </span>
   );
 }

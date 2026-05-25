@@ -184,6 +184,19 @@ async function deleteById(table, id, action) {
   throwIfError(error, action);
 }
 
+async function updateIcon(table, id, icon, mapper, action) {
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from(table)
+    .update({ icono: icon })
+    .eq("id", id)
+    .select("*")
+    .single();
+
+  throwIfError(error, action);
+  return mapper(data);
+}
+
 export async function loadManyumarData() {
   const client = requireSupabase();
 
@@ -232,6 +245,16 @@ export async function deleteCompany(id) {
   await deleteById(manyumarTables.companies, id, `No se pudo eliminar de ${manyumarTables.companies}`);
 }
 
+export async function updateCompanyIcon(id, icon) {
+  return updateIcon(
+    manyumarTables.companies,
+    id,
+    icon,
+    mapCompany,
+    `No se pudo actualizar ${manyumarTables.companies}`,
+  );
+}
+
 export async function createCategory(category) {
   return insertAndReturn(
     manyumarTables.categories,
@@ -243,6 +266,16 @@ export async function createCategory(category) {
 
 export async function deleteCategory(id) {
   await deleteById(manyumarTables.categories, id, `No se pudo eliminar de ${manyumarTables.categories}`);
+}
+
+export async function updateCategoryIcon(id, icon) {
+  return updateIcon(
+    manyumarTables.categories,
+    id,
+    icon,
+    mapCategory,
+    `No se pudo actualizar ${manyumarTables.categories}`,
+  );
 }
 
 export async function createCompanyCategory(category) {
@@ -262,6 +295,16 @@ export async function deleteCompanyCategory(id) {
   );
 }
 
+export async function updateCompanyCategoryIcon(id, icon) {
+  return updateIcon(
+    manyumarTables.companyCategories,
+    id,
+    icon,
+    mapCompanyCategory,
+    `No se pudo actualizar ${manyumarTables.companyCategories}`,
+  );
+}
+
 export async function createCategoryDetail(detail) {
   return insertAndReturn(
     manyumarTables.categoryDetails,
@@ -275,6 +318,16 @@ export async function deleteCategoryDetail(id) {
   await deleteById(manyumarTables.categoryDetails, id, `No se pudo eliminar de ${manyumarTables.categoryDetails}`);
 }
 
+export async function updateCategoryDetailIcon(id, icon) {
+  return updateIcon(
+    manyumarTables.categoryDetails,
+    id,
+    icon,
+    mapCategoryDetail,
+    `No se pudo actualizar ${manyumarTables.categoryDetails}`,
+  );
+}
+
 export async function createIncomeOrigin(origin) {
   return insertAndReturn(
     manyumarTables.incomeOrigins,
@@ -286,6 +339,16 @@ export async function createIncomeOrigin(origin) {
 
 export async function deleteIncomeOrigin(id) {
   await deleteById(manyumarTables.incomeOrigins, id, `No se pudo eliminar de ${manyumarTables.incomeOrigins}`);
+}
+
+export async function updateIncomeOriginIcon(id, icon) {
+  return updateIcon(
+    manyumarTables.incomeOrigins,
+    id,
+    icon,
+    mapIncomeOrigin,
+    `No se pudo actualizar ${manyumarTables.incomeOrigins}`,
+  );
 }
 
 export async function createTransaction(transaction) {

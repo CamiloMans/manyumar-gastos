@@ -18,17 +18,17 @@
   --income: #197449;
   --income-soft: #e5f4e9;
   --income-border: #acd6b9;
-  --income-popup: #078046;
-  --income-popup-soft: #def5e8;
-  --income-popup-border: #8fcfa8;
-  --income-popup-focus: rgba(7, 128, 70, 0.18);
+  --income-popup: #226b4d;
+  --income-popup-soft: #eef7f1;
+  --income-popup-border: #c9decf;
+  --income-popup-focus: rgba(24, 49, 41, 0.14);
   --expense: #bd363f;
   --expense-soft: #fbe9e5;
   --expense-border: #e4b2ad;
-  --expense-popup: #cf2433;
-  --expense-popup-soft: #fde5e7;
-  --expense-popup-border: #eda0a6;
-  --expense-popup-focus: rgba(207, 36, 51, 0.18);
+  --expense-popup: #a34b52;
+  --expense-popup-soft: #faeeec;
+  --expense-popup-border: #e5c5c1;
+  --expense-popup-focus: rgba(24, 49, 41, 0.14);
   --warning: #b48025;
   --phone-width: 424px;
   --radius: 8px;
@@ -464,10 +464,14 @@ button {
   font-size: 13px;
 }
 
-.category-total-list,
-.movement-list {
+.category-total-list {
   display: grid;
   gap: 8px;
+}
+
+.movement-list {
+  display: grid;
+  gap: 0;
 }
 
 .dated-groups {
@@ -502,7 +506,7 @@ button {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
   min-height: 76px;
-  padding: 8px 0;
+  padding: 12px 0;
 }
 
 .editable-row {
@@ -733,16 +737,24 @@ button {
   overflow-wrap: anywhere;
 }
 
-.transaction-detail {
+.transaction-detail,
+.transaction-description-row {
   min-width: 0;
   overflow: hidden;
-  color: var(--accent);
   font-size: 12px;
   font-style: normal;
   font-weight: 500;
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.transaction-detail {
+  color: var(--accent);
+}
+
+.transaction-description-row {
+  color: var(--text);
 }
 
 .transaction-meta {
@@ -769,6 +781,7 @@ button {
   white-space: nowrap;
 }
 
+.movement-row + .movement-row,
 .ledger-row + .ledger-row,
 .managed-row + .managed-row {
   border-top: 1px solid var(--border);
@@ -929,6 +942,31 @@ button {
   white-space: nowrap;
 }
 
+.managed-row .icon-edit-button {
+  width: 40px;
+  height: 40px;
+  margin: -4px;
+  border-radius: 999px;
+  color: inherit;
+}
+
+.managed-row .icon-edit-button.active {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px rgba(15, 106, 96, 0.22);
+}
+
+.managed-icon-editor {
+  padding: 0 16px 16px 70px;
+}
+
+.managed-icon-editor + .managed-row {
+  border-top: 1px solid var(--border);
+}
+
+.managed-icon-editor .icon-picker {
+  max-width: 280px;
+}
+
 .inline-form {
   display: grid;
   gap: 12px;
@@ -1039,8 +1077,9 @@ select:focus,
 
 .transaction-sheet .option-list button.selected,
 .transaction-sheet .category-picker button.selected {
-  background: var(--sheet-soft);
-  border-color: var(--sheet-border);
+  background: var(--card-soft);
+  border-color: var(--border-strong);
+  color: var(--text);
 }
 
 .sheet-layer {
@@ -1064,8 +1103,7 @@ select:focus,
 .transaction-sheet {
   position: absolute;
   inset: auto 0 0;
-  --sheet-tone: var(--accent);
-  --sheet-soft: var(--accent-soft);
+  --sheet-tone: var(--dark);
   --sheet-border: var(--border);
   --sheet-focus: rgba(15, 106, 96, 0.16);
   width: 100%;
@@ -1080,21 +1118,15 @@ select:focus,
 }
 
 .transaction-sheet.income {
-  --sheet-tone: var(--income-popup);
-  --sheet-soft: var(--income-popup-soft);
-  --sheet-border: var(--income-popup-border);
   --sheet-focus: var(--income-popup-focus);
-  background: linear-gradient(180deg, var(--income-popup-soft), var(--card) 132px);
-  border-color: var(--income-popup-border);
+  background: linear-gradient(180deg, var(--income-popup-soft), var(--card) 148px);
+  border-color: var(--border);
 }
 
 .transaction-sheet.expense {
-  --sheet-tone: var(--expense-popup);
-  --sheet-soft: var(--expense-popup-soft);
-  --sheet-border: var(--expense-popup-border);
   --sheet-focus: var(--expense-popup-focus);
-  background: linear-gradient(180deg, var(--expense-popup-soft), var(--card) 132px);
-  border-color: var(--expense-popup-border);
+  background: linear-gradient(180deg, var(--expense-popup-soft), var(--card) 148px);
+  border-color: var(--border);
 }
 
 .transaction-sheet::before {
@@ -1104,7 +1136,7 @@ select:focus,
   z-index: 3;
   display: block;
   height: 4px;
-  background: var(--sheet-tone);
+  background: rgba(24, 49, 41, 0.12);
 }
 
 .transaction-sheet .form-header {
@@ -1115,12 +1147,12 @@ select:focus,
   margin: 0;
   padding: 16px;
   background: rgba(255, 254, 249, 0.88);
-  border-bottom: 1px solid var(--sheet-border);
+  border-bottom: 1px solid var(--border);
   backdrop-filter: blur(12px);
 }
 
 .transaction-sheet .form-header h3 {
-  color: var(--sheet-tone);
+  color: var(--text);
 }
 
 .sheet-body {
@@ -1132,13 +1164,13 @@ select:focus,
 .transaction-sheet .amount-label b,
 .transaction-sheet .date-field svg,
 .transaction-sheet .picker-field svg {
-  color: var(--sheet-tone);
+  color: var(--muted);
 }
 
 .transaction-sheet input:focus,
 .transaction-sheet select:focus,
 .transaction-sheet .picker-field:focus {
-  border-color: var(--sheet-tone);
+  border-color: var(--border-strong);
   box-shadow: 0 0 0 3px var(--sheet-focus);
 }
 
@@ -1222,10 +1254,12 @@ select:focus,
 
 .submit.expense {
   background: var(--expense-popup);
+  box-shadow: 0 8px 18px rgba(163, 75, 82, 0.18);
 }
 
 .submit.income {
   background: var(--income-popup);
+  box-shadow: 0 8px 18px rgba(34, 107, 77, 0.18);
 }
 
 .submit:disabled {
@@ -1240,8 +1274,8 @@ select:focus,
   left: 50%;
   z-index: 30;
   width: min(var(--phone-width), 100vw);
-  height: calc(86px + env(safe-area-inset-bottom));
-  padding: 8px 12px calc(10px + env(safe-area-inset-bottom));
+  height: calc(74px + env(safe-area-inset-bottom));
+  padding: 0;
   transform: translateX(-50%);
   background: linear-gradient(180deg, rgba(255, 254, 249, 0.72), rgba(249, 251, 245, 0.98));
   border-top: 0;
@@ -1254,12 +1288,12 @@ select:focus,
   grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: stretch;
   width: 100%;
-  height: 60px;
+  height: 100%;
   margin: 0 auto;
-  padding: 4px;
+  padding: 6px 12px env(safe-area-inset-bottom);
   gap: 4px;
   border: 0;
-  border-radius: var(--radius);
+  border-radius: 0;
   background: rgba(255, 254, 249, 0.84);
   box-shadow: 0 8px 22px rgba(22, 43, 36, 0.06);
 }
@@ -1271,7 +1305,7 @@ select:focus,
   align-content: center;
   justify-items: center;
   min-width: 0;
-  height: 52px;
+  height: 100%;
   gap: 2px;
   padding: 4px;
   border: 0;
