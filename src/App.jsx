@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDownCircle,
   ArrowDownRight,
@@ -21,7 +21,6 @@ import {
   Receipt,
   Settings,
   Sprout,
-  Tags,
   Tractor,
   Trash2,
   TrendingUp,
@@ -30,8 +29,25 @@ import {
   Wrench,
   X,
 } from "lucide-react";
+import { supabaseConfigMessage } from "./supabaseClient";
+import {
+  createCategory,
+  createCategoryDetail,
+  createCompany,
+  createCompanyCategory,
+  createIncomeOrigin,
+  createTransaction,
+  deleteCategory,
+  deleteCategoryDetail,
+  deleteCompany,
+  deleteCompanyCategory,
+  deleteIncomeOrigin,
+  deleteTransaction,
+  loadManyumarData,
+  updateTransaction,
+} from "./manyumarRepository";
 
-// ─── Default data (used only as initial values for localStorage) ─────────────
+// ─── Default data reference ──────────────────────────────────────────────────
 
 const defaultExpenseCategories = [
   { id: "adquisicion", name: "ADQUISICION", icon: "package", type: "expense" },
@@ -48,11 +64,6 @@ const defaultIncomeCategories = [
   { id: "serv-cosecha", name: "SERV. COSECHA", icon: "wheat", type: "income" },
   { id: "serv-siembra", name: "SERV. SIEMBRA", icon: "sprout", type: "income" },
   { id: "venta", name: "VENTA", icon: "dollar", type: "income" },
-];
-
-const defaultAccounts = [
-  { id: "main", name: "Cuenta principal", initialBalance: 0 },
-  { id: "savings", name: "Ahorros", initialBalance: 0 },
 ];
 
 const defaultCompanies = [
@@ -158,21 +169,17 @@ const spanishMonths = [
 
 // ─── Hooks & helpers ──────────────────────────────────────────────────────────
 
-function useStoredState(key, initialValue) {
-  const [value, setValue] = useState(() => {
-    try {
-      const stored = localStorage.getItem(key);
-      return stored ? JSON.parse(stored) : initialValue;
-    } catch {
-      return initialValue;
-    }
-  });
+const legacyStorageKeys = [
+  "manyumar.transactions",
+  "manyumar.categories.v4",
+  "manyumar.companies",
+  "manyumar.companyCategories",
+  "manyumar.categoryDetails",
+  "manyumar.incomeOrigins",
+];
 
-  useEffect(() => {
-    localStorage.setItem(key, JSON.stringify(value));
-  }, [key, value]);
-
-  return [value, setValue];
+function clearLegacyLocalData() {
+  legacyStorageKeys.forEach((key) => localStorage.removeItem(key));
 }
 
 function firstDayOfMonth(date = new Date()) {
@@ -264,57 +271,210 @@ function CategoryBadge({ category, compact = false }) {
 function App() {
   const [view, setView] = useState("home");
   const [selectedMonth, setSelectedMonth] = useState(() => firstDayOfMonth());
-  const [transactions, setTransactions] = useStoredState("manyumar.transactions", []);
-  const [categories, setCategories] = useStoredState("manyumar.categories.v4", [
-    ...defaultExpenseCategories,
-    ...defaultIncomeCategories,
-  ]);
-  const [accounts, setAccounts] = useStoredState("manyumar.accounts", defaultAccounts);
-  const [companies, setCompanies] = useStoredState("manyumar.companies", defaultCompanies);
-  const [companyCategories, setCompanyCategories] = useStoredState("manyumar.companyCategories", defaultCompanyCategories);
-  const [categoryDetails, setCategoryDetails] = useStoredState("manyumar.categoryDetails", defaultCategoryDetails);
-  const [incomeOrigins, setIncomeOrigins] = useStoredState("manyumar.incomeOrigins", defaultIncomeOrigins);
+  const [transactions, setTransactions] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [companies, setCompanies] = useState([]);
+  const [companyCategories, setCompanyCategories] = useState([]);
+  const [categoryDetails, setCategoryDetails] = useState([]);
+  const [incomeOrigins, setIncomeOrigins] = useState([]);
+  const [companyFilterId, setCompanyFilterId] = useState("all");
   const [transactionModal, setTransactionModal] = useState(null);
   const [settingsPanel, setSettingsPanel] = useState(null);
+  const [isDataLoading, setIsDataLoading] = useState(true);
+  const [dataError, setDataError] = useState("");
+
+  const loadData = useCallback(async () => {
+    setIsDataLoading(true);
+    setDataError("");
+
+    try {
+      const data = await loadManyumarData();
+      setCategories(data.categories);
+      setCompanies(data.companies);
+      setCompanyCategories(data.companyCategories);
+      setCategoryDetails(data.categoryDetails);
+      setIncomeOrigins(data.incomeOrigins);
+      setTransactions(data.transactions);
+    } catch (error) {
+      setDataError(error.message || supabaseConfigMessage);
+    } finally {
+      setIsDataLoading(false);
+    }
+  }, []);
+
+  const reportDataError = useCallback((error, fallback) => {
+    const message = error.message || fallback;
+    window.alert(message);
+  }, []);
+
+  useEffect(() => {
+    clearLegacyLocalData();
+    loadData();
+  }, [loadData]);
 
   useEffect(() => {
     document.body.classList.toggle("modal-open", Boolean(transactionModal));
     return () => document.body.classList.remove("modal-open");
   }, [transactionModal]);
 
+  useEffect(() => {
+    if (companyFilterId !== "all" && !companies.some((company) => company.id === companyFilterId)) {
+      setCompanyFilterId("all");
+    }
+  }, [companies, companyFilterId]);
+
   const monthTransactions = useMemo(
     () => transactions.filter((transaction) => isSameMonth(transaction.date, selectedMonth)),
     [selectedMonth, transactions],
   );
 
+  const visibleMonthTransactions = useMemo(
+    () =>
+      companyFilterId === "all"
+        ? monthTransactions
+        : monthTransactions.filter((transaction) => transaction.companyId === companyFilterId),
+    [companyFilterId, monthTransactions],
+  );
+
   const totals = useMemo(() => {
-    const income = monthTransactions
+    const income = visibleMonthTransactions
       .filter((transaction) => transaction.type === "income")
       .reduce((sum, transaction) => sum + Number(transaction.amount), 0);
-    const expense = monthTransactions
+    const expense = visibleMonthTransactions
       .filter((transaction) => transaction.type === "expense")
       .reduce((sum, transaction) => sum + Number(transaction.amount), 0);
     return { income, expense, balance: income - expense };
-  }, [monthTransactions]);
+  }, [visibleMonthTransactions]);
 
   const lookupCategories = useMemo(
     () => [...categories, ...companyCategories],
     [categories, companyCategories],
   );
 
+  const handleCreateCategory = async (category) => {
+    try {
+      const saved = await createCategory({ ...category, id: crypto.randomUUID() });
+      setCategories((current) => [saved, ...current]);
+      setSettingsPanel(null);
+      setDataError("");
+    } catch (error) {
+      reportDataError(error, "No se pudo guardar la categoria en Supabase.");
+    }
+  };
+
+  const handleDeleteCategory = async (id) => {
+    try {
+      await deleteCategory(id);
+      setCategories((current) => current.filter((category) => category.id !== id));
+      setDataError("");
+    } catch (error) {
+      reportDataError(error, "No se pudo eliminar la categoria en Supabase.");
+    }
+  };
+
+  const handleCreateCompany = async (company) => {
+    try {
+      const saved = await createCompany({ ...company, id: crypto.randomUUID() });
+      setCompanies((current) => [...current, saved]);
+      setSettingsPanel(null);
+      setDataError("");
+    } catch (error) {
+      reportDataError(error, "No se pudo guardar la empresa en Supabase.");
+    }
+  };
+
+  const handleDeleteCompany = async (id) => {
+    try {
+      await deleteCompany(id);
+      const deletedCategoryIds = new Set(
+        companyCategories.filter((category) => category.companyId === id).map((category) => category.id),
+      );
+      setCompanies((current) => current.filter((company) => company.id !== id));
+      setCompanyCategories((current) => current.filter((category) => category.companyId !== id));
+      setCategoryDetails((current) => current.filter((detail) => !deletedCategoryIds.has(detail.parentCategoryId)));
+      setDataError("");
+    } catch (error) {
+      reportDataError(error, "No se pudo eliminar la empresa en Supabase.");
+    }
+  };
+
+  const handleCreateCompanyCategory = async (category) => {
+    try {
+      const saved = await createCompanyCategory({ ...category, id: crypto.randomUUID(), type: "expense" });
+      setCompanyCategories((current) => [...current, saved]);
+      setSettingsPanel(null);
+      setDataError("");
+    } catch (error) {
+      reportDataError(error, "No se pudo guardar la categoria de empresa en Supabase.");
+    }
+  };
+
+  const handleDeleteCompanyCategory = async (id) => {
+    try {
+      await deleteCompanyCategory(id);
+      setCompanyCategories((current) => current.filter((category) => category.id !== id));
+      setCategoryDetails((current) => current.filter((detail) => detail.parentCategoryId !== id));
+      setDataError("");
+    } catch (error) {
+      reportDataError(error, "No se pudo eliminar la categoria de empresa en Supabase.");
+    }
+  };
+
+  const handleCreateCategoryDetail = async (detail) => {
+    try {
+      const saved = await createCategoryDetail({ ...detail, id: crypto.randomUUID() });
+      setCategoryDetails((current) => [...current, saved]);
+      setSettingsPanel(null);
+      setDataError("");
+    } catch (error) {
+      reportDataError(error, "No se pudo guardar el detalle en Supabase.");
+    }
+  };
+
+  const handleDeleteCategoryDetail = async (id) => {
+    try {
+      await deleteCategoryDetail(id);
+      setCategoryDetails((current) => current.filter((detail) => detail.id !== id));
+      setDataError("");
+    } catch (error) {
+      reportDataError(error, "No se pudo eliminar el detalle en Supabase.");
+    }
+  };
+
+  const handleCreateIncomeOrigin = async (origin) => {
+    try {
+      const saved = await createIncomeOrigin({ ...origin, id: crypto.randomUUID() });
+      setIncomeOrigins((current) => [...current, saved]);
+      setSettingsPanel(null);
+      setDataError("");
+    } catch (error) {
+      reportDataError(error, "No se pudo guardar el origen en Supabase.");
+    }
+  };
+
+  const handleDeleteIncomeOrigin = async (id) => {
+    try {
+      await deleteIncomeOrigin(id);
+      setIncomeOrigins((current) => current.filter((origin) => origin.id !== id));
+      setDataError("");
+    } catch (error) {
+      reportDataError(error, "No se pudo eliminar el origen en Supabase.");
+    }
+  };
+
   const context = {
-    accounts,
     categories,
     categoryDetails,
+    companyFilterId,
     companies,
     companyCategories,
     incomeOrigins,
     lookupCategories,
-    monthTransactions,
+    monthTransactions: visibleMonthTransactions,
     selectedMonth,
-    setAccounts,
     setCategories,
     setCategoryDetails,
+    setCompanyFilterId,
     setCompanies,
     setCompanyCategories,
     setIncomeOrigins,
@@ -322,6 +482,18 @@ function App() {
     setSettingsPanel,
     setTransactionModal,
     setTransactions,
+    onCreateCategory: handleCreateCategory,
+    onCreateCategoryDetail: handleCreateCategoryDetail,
+    onCreateCompany: handleCreateCompany,
+    onCreateCompanyCategory: handleCreateCompanyCategory,
+    onCreateIncomeOrigin: handleCreateIncomeOrigin,
+    onDeleteCategory: handleDeleteCategory,
+    onDeleteCategoryDetail: handleDeleteCategoryDetail,
+    onDeleteCompany: handleDeleteCompany,
+    onDeleteCompanyCategory: handleDeleteCompanyCategory,
+    onDeleteIncomeOrigin: handleDeleteIncomeOrigin,
+    dataError,
+    isDataLoading,
     settingsPanel,
     totals,
     transactions,
@@ -329,25 +501,62 @@ function App() {
     setView,
   };
 
+  const handleSaveTransaction = async (transaction) => {
+    const editingTransaction = transactionModal?.transaction;
+
+    try {
+      if (editingTransaction?.id) {
+        const saved = await updateTransaction(editingTransaction.id, transaction);
+        setTransactions((current) => current.map((item) => (item.id === editingTransaction.id ? saved : item)));
+      } else {
+        const saved = await createTransaction({ ...transaction, id: crypto.randomUUID() });
+        setTransactions((current) => [saved, ...current]);
+      }
+
+      setTransactionModal(null);
+      setDataError("");
+    } catch (error) {
+      reportDataError(error, "No se pudo guardar el movimiento en Supabase.");
+    }
+  };
+
+  const handleDeleteTransaction = async (id) => {
+    try {
+      await deleteTransaction(id);
+      setTransactions((current) => current.filter((item) => item.id !== id));
+      setDataError("");
+    } catch (error) {
+      reportDataError(error, "No se pudo eliminar el movimiento en Supabase.");
+    }
+  };
+
   return (
     <div className="app-shell">
-      <Header onAdd={setTransactionModal} />
+      <Header disabled={isDataLoading || Boolean(dataError)} onAdd={setTransactionModal} />
       <main className="app-main">
-        {view === "home" && <HomeView {...context} />}
-        {view === "expenses" && <LedgerView {...context} type="expense" />}
-        {view === "income" && <LedgerView {...context} type="income" />}
-        {view === "settings" && <SettingsView setView={setView} />}
-        {view === "categories" && <CategoriesView {...context} />}
-        {view === "accounts" && <AccountsView {...context} />}
-        {view === "companies" && <CompaniesView {...context} />}
-        {view === "companyCategories" && <CompanyCategoriesView {...context} />}
-        {view === "categoryDetails" && <CategoryDetailsView {...context} />}
-        {view === "incomeOrigins" && <IncomeOriginsView {...context} />}
+        {isDataLoading && <DataStatusCard title="Cargando datos" detail="Conectando con Supabase..." />}
+        {!isDataLoading && dataError && (
+          <DataStatusCard title="No se pudo usar Supabase" detail={dataError} action="Reintentar" onAction={loadData} />
+        )}
+        {!isDataLoading && !dataError && (
+          <>
+            {view === "home" && <HomeView {...context} />}
+            {view === "expenses" && (
+              <LedgerView {...context} onDeleteTransaction={handleDeleteTransaction} type="expense" />
+            )}
+            {view === "income" && <LedgerView {...context} onDeleteTransaction={handleDeleteTransaction} type="income" />}
+            {view === "settings" && <SettingsView setView={setView} />}
+            {view === "categories" && <CategoriesView {...context} />}
+            {view === "companies" && <CompaniesView {...context} />}
+            {view === "companyCategories" && <CompanyCategoriesView {...context} />}
+            {view === "categoryDetails" && <CategoryDetailsView {...context} />}
+            {view === "incomeOrigins" && <IncomeOriginsView {...context} />}
+          </>
+        )}
       </main>
       <BottomNav view={view} setView={setView} />
       {transactionModal && (
         <TransactionSheet
-          accounts={accounts}
           categories={categories}
           categoryDetails={categoryDetails}
           companies={companies}
@@ -355,25 +564,7 @@ function App() {
           incomeOrigins={incomeOrigins}
           initialTransaction={transactionModal.transaction}
           onClose={() => setTransactionModal(null)}
-          onSave={(transaction) => {
-            const editingId = transactionModal.transaction?.id;
-            setTransactions((current) =>
-              editingId
-                ? current.map((item) =>
-                    item.id === editingId
-                      ? {
-                          ...transactionModal.transaction,
-                          ...transaction,
-                          id: editingId,
-                          createdAt: transactionModal.transaction.createdAt || transaction.createdAt,
-                          updatedAt: new Date().toISOString(),
-                        }
-                      : item,
-                  )
-                : [{ ...transaction, id: crypto.randomUUID() }, ...current],
-            );
-            setTransactionModal(null);
-          }}
+          onSave={handleSaveTransaction}
           type={transactionModal.type}
         />
       )}
@@ -383,17 +574,17 @@ function App() {
 
 // ─── Header ───────────────────────────────────────────────────────────────────
 
-function Header({ onAdd }) {
+function Header({ disabled = false, onAdd }) {
   return (
     <header className="app-header">
       <div className="header-inner">
         <h1>Manyumar</h1>
         <div className="header-actions">
-          <IconButton label="Agregar ingreso" tone="income" onClick={() => onAdd({ type: "income" })}>
-            <ArrowUpCircle size={20} />
+          <IconButton disabled={disabled} label="Agregar ingreso" tone="income" onClick={() => onAdd({ type: "income" })}>
+            <ArrowUpCircle size={24} />
           </IconButton>
-          <IconButton label="Agregar gasto" tone="expense" onClick={() => onAdd({ type: "expense" })}>
-            <ArrowDownCircle size={20} />
+          <IconButton disabled={disabled} label="Agregar gasto" tone="expense" onClick={() => onAdd({ type: "expense" })}>
+            <ArrowDownCircle size={24} />
           </IconButton>
         </div>
       </div>
@@ -401,11 +592,26 @@ function Header({ onAdd }) {
   );
 }
 
-function IconButton({ children, label, tone, onClick }) {
+function IconButton({ children, disabled = false, label, tone, onClick }) {
   return (
-    <button className={cx("icon-button", tone)} aria-label={label} title={label} onClick={onClick}>
+    <button className={cx("icon-button", tone)} aria-label={label} disabled={disabled} title={label} onClick={onClick}>
       {children}
     </button>
+  );
+}
+
+function DataStatusCard({ action, detail, onAction, title }) {
+  return (
+    <Card className="data-status-card">
+      <WalletCards size={42} strokeWidth={1.7} />
+      <strong>{title}</strong>
+      <p>{detail}</p>
+      {action && (
+        <button className="outline-action" onClick={onAction} type="button">
+          {action}
+        </button>
+      )}
+    </Card>
   );
 }
 
@@ -433,16 +639,32 @@ function BottomNav({ view, setView }) {
 function NavButton({ item, active, onClick }) {
   const Icon = item.icon;
   return (
-    <button className={cx("nav-button", active && "active")} onClick={onClick}>
-      <Icon size={20} />
-      <span>{item.label}</span>
+    <button
+      aria-current={active ? "page" : undefined}
+      className={cx("nav-button", active && "active")}
+      onClick={onClick}
+      type="button"
+    >
+      <span className="nav-icon">
+        <Icon size={20} />
+      </span>
+      <span className="nav-label">{item.label}</span>
     </button>
   );
 }
 
 // ─── Home ─────────────────────────────────────────────────────────────────────
 
-function HomeView({ lookupCategories, monthTransactions, selectedMonth, setTransactionModal, totals }) {
+function HomeView({
+  companies,
+  companyFilterId,
+  lookupCategories,
+  monthTransactions,
+  selectedMonth,
+  setCompanyFilterId,
+  setTransactionModal,
+  totals,
+}) {
   const latest = [...monthTransactions].sort(
     (a, b) => parseStoredDate(b.createdAt || b.date) - parseStoredDate(a.createdAt || a.date),
   );
@@ -451,6 +673,7 @@ function HomeView({ lookupCategories, monthTransactions, selectedMonth, setTrans
   return (
     <section className="page-stack home-page">
       <p className="month-kicker">{monthTitle(selectedMonth).toUpperCase()}</p>
+      <CompanyFilter companies={companies} value={companyFilterId} onChange={setCompanyFilterId} />
 
       <div className="balance-card">
         <p>Balance del mes</p>
@@ -513,15 +736,37 @@ function SummaryCard({ title, value, type }) {
   );
 }
 
+function CompanyFilter({ companies, onChange, value }) {
+  const options = [{ id: "all", name: "TODO" }, ...companies];
+
+  return (
+    <div className="company-filter" role="group" aria-label="Filtrar por empresa">
+      {options.map((company) => (
+        <button
+          className={company.id === value ? "active" : ""}
+          key={company.id}
+          onClick={() => onChange(company.id)}
+          type="button"
+        >
+          {company.name}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // ─── Ledger ───────────────────────────────────────────────────────────────────
 
 function LedgerView({
+  companies,
+  companyFilterId,
   lookupCategories,
   monthTransactions,
+  onDeleteTransaction,
   selectedMonth,
+  setCompanyFilterId,
   setSelectedMonth,
   setTransactionModal,
-  setTransactions,
   totals,
   type,
 }) {
@@ -536,6 +781,7 @@ function LedgerView({
   return (
     <section className="page-stack ledger-page">
       <MonthSwitcher selectedMonth={selectedMonth} setSelectedMonth={setSelectedMonth} />
+      <CompanyFilter companies={companies} value={companyFilterId} onChange={setCompanyFilterId} />
       <div className={cx("ledger-total", type)}>
         <p>{title}</p>
         <strong>{formatter.format(total)}</strong>
@@ -567,7 +813,7 @@ function LedgerView({
                     onDelete={() => {
                       const confirmed = window.confirm("¿Eliminar este registro? Esta acción no se puede deshacer.");
                       if (confirmed) {
-                        setTransactions((current) => current.filter((item) => item.id !== transaction.id));
+                        onDeleteTransaction(transaction.id);
                       }
                     }}
                     onEdit={() => setTransactionModal({ type: transaction.type, transaction })}
@@ -621,22 +867,7 @@ function SettingsView({ setView }) {
         <p>Personaliza tu experiencia</p>
       </div>
       <Card className="settings-card">
-        <p className="section-label" style={{ padding: "0 4px 4px", fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.5 }}>General</p>
-        <SettingsRow
-          icon={Tags}
-          title="Categorías"
-          description="Gestiona tus categorías de transacciones"
-          onClick={() => setView("categories")}
-        />
-        <SettingsRow
-          icon={WalletCards}
-          title="Cuentas"
-          description="Administra tus cuentas bancarias"
-          onClick={() => setView("accounts")}
-        />
-      </Card>
-      <Card className="settings-card">
-        <p className="section-label" style={{ padding: "0 4px 4px", fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.5 }}>Selectores</p>
+        <p className="settings-eyebrow">Selectores</p>
         <SettingsRow
           icon={Tractor}
           title="Empresas"
@@ -687,7 +918,7 @@ function SettingsRow({ description, icon: Icon, onClick, title }) {
 
 // ─── Categories (general) ─────────────────────────────────────────────────────
 
-function CategoriesView({ categories, setCategories, setSettingsPanel, settingsPanel, setView }) {
+function CategoriesView({ categories, onCreateCategory, onDeleteCategory, setSettingsPanel, settingsPanel, setView }) {
   const expenses = categories.filter((category) => category.type === "expense");
   const incomes = categories.filter((category) => category.type === "income");
 
@@ -701,23 +932,20 @@ function CategoriesView({ categories, setCategories, setSettingsPanel, settingsP
       {settingsPanel === "category" && (
         <NewCategoryPanel
           onClose={() => setSettingsPanel(null)}
-          onSave={(category) => {
-            setCategories((current) => [{ ...category, id: crypto.randomUUID() }, ...current]);
-            setSettingsPanel(null);
-          }}
+          onSave={onCreateCategory}
         />
       )}
       <CategorySection
         categories={expenses}
         title="Egresos"
         tone="expense"
-        onDelete={(id) => setCategories((current) => current.filter((category) => category.id !== id))}
+        onDelete={onDeleteCategory}
       />
       <CategorySection
         categories={incomes}
         title="Ingresos"
         tone="income"
-        onDelete={(id) => setCategories((current) => current.filter((category) => category.id !== id))}
+        onDelete={onDeleteCategory}
       />
     </section>
   );
@@ -746,50 +974,9 @@ function CategorySection({ categories, onDelete, title, tone }) {
 
 // ─── Accounts ─────────────────────────────────────────────────────────────────
 
-function AccountsView({ accounts, setAccounts, setSettingsPanel, settingsPanel, setView, transactions }) {
-  return (
-    <section className="page-stack manage-page">
-      <ManageHeader count={`${accounts.length} cuentas`} title="Cuentas" onBack={() => setView("settings")} />
-      <button className="outline-action full" onClick={() => setSettingsPanel(settingsPanel === "account" ? null : "account")}>
-        <Plus size={16} />
-        Nueva cuenta
-      </button>
-      {settingsPanel === "account" && (
-        <NewAccountPanel
-          onClose={() => setSettingsPanel(null)}
-          onSave={(account) => {
-            setAccounts((current) => [{ ...account, id: crypto.randomUUID() }, ...current]);
-            setSettingsPanel(null);
-          }}
-        />
-      )}
-      <Card className="managed-card flat">
-        <div className="managed-list">
-          {accounts.map((account) => (
-            <div className="managed-row" key={account.id}>
-              <span className="managed-main">
-                <span className="round-icon">
-                  <WalletCards size={20} />
-                </span>
-                <span>
-                  <strong>{account.name}</strong>
-                  <small>{formatter.format(accountBalance(account, transactions))}</small>
-                </span>
-              </span>
-              <button aria-label="Eliminar" onClick={() => setAccounts((current) => current.filter((row) => row.id !== account.id))}>
-                <Trash2 size={16} />
-              </button>
-            </div>
-          ))}
-        </div>
-      </Card>
-    </section>
-  );
-}
-
 // ─── Companies ────────────────────────────────────────────────────────────────
 
-function CompaniesView({ companies, setCompanies, setSettingsPanel, settingsPanel, setView }) {
+function CompaniesView({ companies, onCreateCompany, onDeleteCompany, setSettingsPanel, settingsPanel, setView }) {
   return (
     <section className="page-stack manage-page">
       <ManageHeader count={`${companies.length} empresas`} title="Empresas" onBack={() => setView("settings")} />
@@ -806,10 +993,7 @@ function CompaniesView({ companies, setCompanies, setSettingsPanel, settingsPane
           namePlaceholder="Nombre de la empresa"
           defaultIcon="tractor"
           onClose={() => setSettingsPanel(null)}
-          onSave={(item) => {
-            setCompanies((current) => [...current, { ...item, id: crypto.randomUUID() }]);
-            setSettingsPanel(null);
-          }}
+          onSave={onCreateCompany}
         />
       )}
       <Card className="managed-card flat">
@@ -822,7 +1006,7 @@ function CompaniesView({ companies, setCompanies, setSettingsPanel, settingsPane
               </span>
               <button
                 aria-label="Eliminar"
-                onClick={() => setCompanies((current) => current.filter((c) => c.id !== company.id))}
+                onClick={() => onDeleteCompany(company.id)}
               >
                 <Trash2 size={16} />
               </button>
@@ -836,7 +1020,15 @@ function CompaniesView({ companies, setCompanies, setSettingsPanel, settingsPane
 
 // ─── Company Categories ───────────────────────────────────────────────────────
 
-function CompanyCategoriesView({ companies, companyCategories, setCompanyCategories, setSettingsPanel, settingsPanel, setView }) {
+function CompanyCategoriesView({
+  companies,
+  companyCategories,
+  onCreateCompanyCategory,
+  onDeleteCompanyCategory,
+  setSettingsPanel,
+  settingsPanel,
+  setView,
+}) {
   return (
     <section className="page-stack manage-page">
       <ManageHeader
@@ -855,10 +1047,7 @@ function CompanyCategoriesView({ companies, companyCategories, setCompanyCategor
         <NewCompanyCategoryPanel
           companies={companies}
           onClose={() => setSettingsPanel(null)}
-          onSave={(item) => {
-            setCompanyCategories((current) => [...current, { ...item, id: crypto.randomUUID(), type: "expense" }]);
-            setSettingsPanel(null);
-          }}
+          onSave={onCreateCompanyCategory}
         />
       )}
       {companies.map((company) => {
@@ -876,7 +1065,7 @@ function CompanyCategoriesView({ companies, companyCategories, setCompanyCategor
                   </span>
                   <button
                     aria-label="Eliminar"
-                    onClick={() => setCompanyCategories((current) => current.filter((c) => c.id !== cat.id))}
+                    onClick={() => onDeleteCompanyCategory(cat.id)}
                   >
                     <Trash2 size={16} />
                   </button>
@@ -892,7 +1081,15 @@ function CompanyCategoriesView({ companies, companyCategories, setCompanyCategor
 
 // ─── Category Details ─────────────────────────────────────────────────────────
 
-function CategoryDetailsView({ categoryDetails, companyCategories, setCategoryDetails, setSettingsPanel, settingsPanel, setView }) {
+function CategoryDetailsView({
+  categoryDetails,
+  companyCategories,
+  onCreateCategoryDetail,
+  onDeleteCategoryDetail,
+  setSettingsPanel,
+  settingsPanel,
+  setView,
+}) {
   const parentCats = companyCategories.filter((c) =>
     categoryDetails.some((d) => d.parentCategoryId === c.id)
   );
@@ -917,10 +1114,7 @@ function CategoryDetailsView({ categoryDetails, companyCategories, setCategoryDe
         <NewCategoryDetailPanel
           companyCategories={companyCategories}
           onClose={() => setSettingsPanel(null)}
-          onSave={(item) => {
-            setCategoryDetails((current) => [...current, { ...item, id: crypto.randomUUID() }]);
-            setSettingsPanel(null);
-          }}
+          onSave={onCreateCategoryDetail}
         />
       )}
       {allParents.map((parent) => {
@@ -937,7 +1131,7 @@ function CategoryDetailsView({ categoryDetails, companyCategories, setCategoryDe
                   </span>
                   <button
                     aria-label="Eliminar"
-                    onClick={() => setCategoryDetails((current) => current.filter((d) => d.id !== detail.id))}
+                    onClick={() => onDeleteCategoryDetail(detail.id)}
                   >
                     <Trash2 size={16} />
                   </button>
@@ -953,7 +1147,7 @@ function CategoryDetailsView({ categoryDetails, companyCategories, setCategoryDe
 
 // ─── Income Origins ───────────────────────────────────────────────────────────
 
-function IncomeOriginsView({ incomeOrigins, setIncomeOrigins, setSettingsPanel, settingsPanel, setView }) {
+function IncomeOriginsView({ incomeOrigins, onCreateIncomeOrigin, onDeleteIncomeOrigin, setSettingsPanel, settingsPanel, setView }) {
   return (
     <section className="page-stack manage-page">
       <ManageHeader
@@ -974,10 +1168,7 @@ function IncomeOriginsView({ incomeOrigins, setIncomeOrigins, setSettingsPanel, 
           namePlaceholder="Nombre del origen"
           defaultIcon="landmark"
           onClose={() => setSettingsPanel(null)}
-          onSave={(item) => {
-            setIncomeOrigins((current) => [...current, { ...item, id: crypto.randomUUID() }]);
-            setSettingsPanel(null);
-          }}
+          onSave={onCreateIncomeOrigin}
         />
       )}
       <Card className="managed-card flat">
@@ -990,7 +1181,7 @@ function IncomeOriginsView({ incomeOrigins, setIncomeOrigins, setSettingsPanel, 
               </span>
               <button
                 aria-label="Eliminar"
-                onClick={() => setIncomeOrigins((current) => current.filter((o) => o.id !== origin.id))}
+                onClick={() => onDeleteIncomeOrigin(origin.id)}
               >
                 <Trash2 size={16} />
               </button>
@@ -1040,42 +1231,6 @@ function NewCategoryPanel({ onClose, onSave }) {
       <IconPicker selected={icon} onChange={setIcon} />
       <button className="submit neutral" disabled={!name.trim()} onClick={() => onSave({ name: name.trim(), icon, type })}>
         Agregar categoría
-      </button>
-    </Card>
-  );
-}
-
-function NewAccountPanel({ onClose, onSave }) {
-  const [name, setName] = useState("");
-  const [balance, setBalance] = useState("");
-
-  return (
-    <Card className="inline-form">
-      <FormHeader title="Nueva cuenta" onClose={onClose} />
-      <label>
-        Nombre
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre de la cuenta" />
-      </label>
-      <label className="amount-label">
-        Saldo inicial
-        <span>
-          <b>$</b>
-          <input
-            inputMode="decimal"
-            type="number"
-            min="0"
-            value={balance}
-            onChange={(e) => setBalance(e.target.value)}
-            placeholder="0"
-          />
-        </span>
-      </label>
-      <button
-        className="submit neutral"
-        disabled={!name.trim()}
-        onClick={() => onSave({ name: name.trim(), initialBalance: Number(balance || 0) })}
-      >
-        Agregar cuenta
       </button>
     </Card>
   );
@@ -1198,7 +1353,6 @@ function FormHeader({ onClose, title }) {
 // ─── Transaction Sheet ────────────────────────────────────────────────────────
 
 function TransactionSheet({
-  accounts,
   categories,
   categoryDetails,
   companies,
@@ -1220,7 +1374,7 @@ function TransactionSheet({
   const [detailId, setDetailId] = useState(() => initialTransaction?.detailId || "");
   const [date, setDate] = useState(() => initialTransaction?.date || inputDate());
   const [openSelect, setOpenSelect] = useState(null);
-  const accountId = initialTransaction?.accountId || accounts[0]?.id || "main";
+  const [isSaving, setIsSaving] = useState(false);
   const previousCompanyId = useRef(companyId);
   const previousCategoryId = useRef(categoryId);
   const previousDetailCategoryId = useRef(categoryId);
@@ -1273,16 +1427,38 @@ function TransactionSheet({
     companyId &&
     (!isVenta || incomeOriginId) &&
     (!hasDetails || detailId) &&
-    date &&
-    accountId;
+    date;
   const noun = type === "expense" ? "gasto" : "ingreso";
   const actionLabel = isEditing ? "Guardar cambios" : `Registrar ${noun}`;
   const sheetTitle = `${isEditing ? "Editar" : "Nuevo"} ${noun}`;
 
+  const handleSubmit = async () => {
+    if (!valid || isSaving) return;
+
+    setIsSaving(true);
+    try {
+      await onSave({
+        amount: parseAmountInput(amount),
+        categoryId,
+        companyId,
+        companyName: selectedCompany?.name || "",
+        date,
+        description: description.trim() || selectedCategory?.name || noun,
+        detailId: hasDetails ? detailId : "",
+        detailName: hasDetails ? selectedDetail?.name || "" : "",
+        incomeOriginId: type === "income" ? incomeOriginId : "",
+        incomeOriginName: type === "income" ? selectedIncomeOrigin?.name || "" : "",
+        type,
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className="sheet-layer" role="dialog" aria-modal="true" aria-label={sheetTitle}>
       <div className="sheet-backdrop" onClick={onClose} />
-      <div className="transaction-sheet">
+      <div className={cx("transaction-sheet", type)}>
         <FormHeader title={sheetTitle} onClose={onClose} />
         <div className="sheet-body">
           <label className="amount-label">
@@ -1409,26 +1585,10 @@ function TransactionSheet({
 
           <button
             className={cx("submit", type)}
-            disabled={!valid}
-            onClick={() =>
-              onSave({
-                accountId,
-                amount: parseAmountInput(amount),
-                categoryId,
-                companyId,
-                companyName: selectedCompany?.name || "",
-                createdAt: new Date().toISOString(),
-                date,
-                description: description.trim() || selectedCategory?.name || noun,
-                detailId: hasDetails ? detailId : "",
-                detailName: hasDetails ? selectedDetail?.name || "" : "",
-                incomeOriginId: type === "income" ? incomeOriginId : "",
-                incomeOriginName: type === "income" ? selectedIncomeOrigin?.name || "" : "",
-                type,
-              })
-            }
+            disabled={!valid || isSaving}
+            onClick={handleSubmit}
           >
-            {actionLabel}
+            {isSaving ? "Guardando..." : actionLabel}
           </button>
         </div>
       </div>
@@ -1550,13 +1710,13 @@ function TransactionLines({ category, signedAmount = false, transaction }) {
           {formatter.format(transaction.amount)}
         </b>
       </span>
-      {detailName && <em className="transaction-detail">{detailName}</em>}
       <span className="transaction-meta">
         <time dateTime={transaction.date}>{shortDate(transaction.date)}</time>
         {metaParts.map((part, index) => (
           <span key={`${part}-${index}`}>{part}</span>
         ))}
       </span>
+      {detailName && <em className="transaction-detail">{detailName}</em>}
     </span>
   );
 }
@@ -1592,13 +1752,6 @@ function groupByDate(transactions) {
 
 function addMonths(date, amount) {
   return new Date(date.getFullYear(), date.getMonth() + amount, 1);
-}
-
-function accountBalance(account, transactions) {
-  return transactions.reduce((total, transaction) => {
-    if (transaction.accountId !== account.id) return total;
-    return total + (transaction.type === "income" ? Number(transaction.amount) : -Number(transaction.amount));
-  }, Number(account.initialBalance || 0));
 }
 
 export default App;
