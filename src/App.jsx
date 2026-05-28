@@ -10,6 +10,7 @@ import {
   Building2,
   Calculator,
   CalendarDays,
+  Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -28,6 +29,7 @@ import {
   Landmark,
   Leaf,
   Package,
+  Pencil,
   PiggyBank,
   Plus,
   Receipt,
@@ -66,10 +68,18 @@ import {
   deleteTransaction,
   loadManyumarData,
   updateCategoryDetailIcon,
+  updateCategoryDetailName,
   updateCategoryIcon,
+  updateCategoryName,
   updateCompanyCategoryIcon,
+  updateCompanyCategoryName,
   updateCompanyIcon,
+  updateCompanyName,
   updateIncomeOriginIcon,
+  updateIncomeOriginName,
+  updateTransactionCompanyName,
+  updateTransactionDetailName,
+  updateTransactionIncomeOriginName,
   updateTransaction,
 } from "./manyumarRepository";
 
@@ -102,10 +112,18 @@ const defaultCompanyCategories = [
   { id: "manyumar-semillas", name: "SEMILLAS", icon: "sprout", type: "expense", companyId: "manyumar" },
   { id: "manyumar-serv-administrativos", name: "SERVICIOS ADMINISTRATIVOS", icon: "receipt", type: "expense", companyId: "manyumar" },
   { id: "manyumar-serv-operativos", name: "SERVICIOS OPERATIVOS", icon: "wrench", type: "expense", companyId: "manyumar" },
+  { id: "manyumar-prestamo-ingreso", name: "PRESTAMO", icon: "handshake", type: "income", companyId: "manyumar" },
+  { id: "manyumar-serv-cosecha", name: "SERV. COSECHA", icon: "wheat", type: "income", companyId: "manyumar" },
+  { id: "manyumar-serv-siembra", name: "SERV. SIEMBRA", icon: "sprout", type: "income", companyId: "manyumar" },
+  { id: "manyumar-venta", name: "VENTA", icon: "dollar", type: "income", companyId: "manyumar" },
   { id: "servicio-materiales", name: "MATERIALES", icon: "package", type: "expense", companyId: "servicio" },
   { id: "servicio-mantencion", name: "MANTENCIÓN", icon: "wrench", type: "expense", companyId: "servicio" },
   { id: "servicio-sueldos", name: "SUELDOS", icon: "coins", type: "expense", companyId: "servicio" },
   { id: "servicio-servicios", name: "SERVICIOS", icon: "receipt", type: "expense", companyId: "servicio" },
+  { id: "servicio-prestamo-ingreso", name: "PRESTAMO", icon: "handshake", type: "income", companyId: "servicio" },
+  { id: "servicio-serv-cosecha", name: "SERV. COSECHA", icon: "wheat", type: "income", companyId: "servicio" },
+  { id: "servicio-serv-siembra", name: "SERV. SIEMBRA", icon: "sprout", type: "income", companyId: "servicio" },
+  { id: "servicio-venta", name: "VENTA", icon: "dollar", type: "income", companyId: "servicio" },
 ];
 
 const defaultCategoryDetails = [
@@ -450,6 +468,17 @@ function App() {
     }
   };
 
+  const handleUpdateCategoryName = async (id, name) => {
+    try {
+      const saved = await updateCategoryName(id, name.trim());
+      setCategories((current) => current.map((category) => (category.id === id ? saved : category)));
+      setSettingsPanel(null);
+      setDataError("");
+    } catch (error) {
+      reportDataError(error, "No se pudo actualizar el nombre de la categoria en Supabase.");
+    }
+  };
+
   const handleCreateCompany = async (company) => {
     try {
       const saved = await createCompany({ ...company, id: crypto.randomUUID() });
@@ -487,9 +516,26 @@ function App() {
     }
   };
 
+  const handleUpdateCompanyName = async (id, name) => {
+    try {
+      const saved = await updateCompanyName(id, name.trim());
+      await updateTransactionCompanyName(id, saved.name);
+      setCompanies((current) => current.map((company) => (company.id === id ? saved : company)));
+      setTransactions((current) =>
+        current.map((transaction) =>
+          transaction.companyId === id ? { ...transaction, companyName: saved.name } : transaction,
+        ),
+      );
+      setSettingsPanel(null);
+      setDataError("");
+    } catch (error) {
+      reportDataError(error, "No se pudo actualizar el nombre de la empresa en Supabase.");
+    }
+  };
+
   const handleCreateCompanyCategory = async (category) => {
     try {
-      const saved = await createCompanyCategory({ ...category, id: crypto.randomUUID(), type: "expense" });
+      const saved = await createCompanyCategory({ ...category, id: crypto.randomUUID() });
       setCompanyCategories((current) => [...current, saved]);
       setSettingsPanel(null);
       setDataError("");
@@ -517,6 +563,17 @@ function App() {
       setDataError("");
     } catch (error) {
       reportDataError(error, "No se pudo actualizar el icono de la categoria de empresa en Supabase.");
+    }
+  };
+
+  const handleUpdateCompanyCategoryName = async (id, name) => {
+    try {
+      const saved = await updateCompanyCategoryName(id, name.trim());
+      setCompanyCategories((current) => current.map((category) => (category.id === id ? saved : category)));
+      setSettingsPanel(null);
+      setDataError("");
+    } catch (error) {
+      reportDataError(error, "No se pudo actualizar el nombre de la categoria de empresa en Supabase.");
     }
   };
 
@@ -552,6 +609,23 @@ function App() {
     }
   };
 
+  const handleUpdateCategoryDetailName = async (id, name) => {
+    try {
+      const saved = await updateCategoryDetailName(id, name.trim());
+      await updateTransactionDetailName(id, saved.name);
+      setCategoryDetails((current) => current.map((detail) => (detail.id === id ? saved : detail)));
+      setTransactions((current) =>
+        current.map((transaction) =>
+          transaction.detailId === id ? { ...transaction, detailName: saved.name } : transaction,
+        ),
+      );
+      setSettingsPanel(null);
+      setDataError("");
+    } catch (error) {
+      reportDataError(error, "No se pudo actualizar el nombre del detalle en Supabase.");
+    }
+  };
+
   const handleCreateIncomeOrigin = async (origin) => {
     try {
       const saved = await createIncomeOrigin({ ...origin, id: crypto.randomUUID() });
@@ -581,6 +655,23 @@ function App() {
       setDataError("");
     } catch (error) {
       reportDataError(error, "No se pudo actualizar el icono del origen en Supabase.");
+    }
+  };
+
+  const handleUpdateIncomeOriginName = async (id, name) => {
+    try {
+      const saved = await updateIncomeOriginName(id, name.trim());
+      await updateTransactionIncomeOriginName(id, saved.name);
+      setIncomeOrigins((current) => current.map((origin) => (origin.id === id ? saved : origin)));
+      setTransactions((current) =>
+        current.map((transaction) =>
+          transaction.incomeOriginId === id ? { ...transaction, incomeOriginName: saved.name } : transaction,
+        ),
+      );
+      setSettingsPanel(null);
+      setDataError("");
+    } catch (error) {
+      reportDataError(error, "No se pudo actualizar el nombre del origen en Supabase.");
     }
   };
 
@@ -615,10 +706,15 @@ function App() {
     onDeleteCompanyCategory: handleDeleteCompanyCategory,
     onDeleteIncomeOrigin: handleDeleteIncomeOrigin,
     onUpdateCategoryIcon: handleUpdateCategoryIcon,
+    onUpdateCategoryName: handleUpdateCategoryName,
     onUpdateCategoryDetailIcon: handleUpdateCategoryDetailIcon,
+    onUpdateCategoryDetailName: handleUpdateCategoryDetailName,
     onUpdateCompanyIcon: handleUpdateCompanyIcon,
+    onUpdateCompanyName: handleUpdateCompanyName,
     onUpdateCompanyCategoryIcon: handleUpdateCompanyCategoryIcon,
+    onUpdateCompanyCategoryName: handleUpdateCompanyCategoryName,
     onUpdateIncomeOriginIcon: handleUpdateIncomeOriginIcon,
+    onUpdateIncomeOriginName: handleUpdateIncomeOriginName,
     dataError,
     isDataLoading,
     settingsPanel,
@@ -1002,9 +1098,15 @@ function SettingsView({ setView }) {
           onClick={() => setView("companies")}
         />
         <SettingsRow
+          icon={ClipboardList}
+          title="Categorías"
+          description="Categorías generales de gastos e ingresos"
+          onClick={() => setView("categories")}
+        />
+        <SettingsRow
           icon={Package}
-          title="Categorías de empresa"
-          description="Categorías de gasto por empresa"
+          title="Categorías por empresa"
+          description="Gastos e ingresos por empresa"
           onClick={() => setView("companyCategories")}
         />
         <SettingsRow
@@ -1050,6 +1152,7 @@ function CategoriesView({
   onCreateCategory,
   onDeleteCategory,
   onUpdateCategoryIcon,
+  onUpdateCategoryName,
   setSettingsPanel,
   settingsPanel,
   setView,
@@ -1076,6 +1179,7 @@ function CategoriesView({
         tone="expense"
         onDelete={onDeleteCategory}
         onIconChange={onUpdateCategoryIcon}
+        onNameChange={onUpdateCategoryName}
         setSettingsPanel={setSettingsPanel}
         settingsPanel={settingsPanel}
       />
@@ -1085,6 +1189,7 @@ function CategoriesView({
         tone="income"
         onDelete={onDeleteCategory}
         onIconChange={onUpdateCategoryIcon}
+        onNameChange={onUpdateCategoryName}
         setSettingsPanel={setSettingsPanel}
         settingsPanel={settingsPanel}
       />
@@ -1092,7 +1197,16 @@ function CategoriesView({
   );
 }
 
-function CategorySection({ categories, onDelete, onIconChange, setSettingsPanel, settingsPanel, title, tone }) {
+function CategorySection({
+  categories,
+  onDelete,
+  onIconChange,
+  onNameChange,
+  setSettingsPanel,
+  settingsPanel,
+  title,
+  tone,
+}) {
   return (
     <Card className="managed-card">
       <p className={cx("section-label", tone)}>{title}</p>
@@ -1103,6 +1217,7 @@ function CategorySection({ categories, onDelete, onIconChange, setSettingsPanel,
             key={category.id}
             onDelete={onDelete}
             onIconChange={onIconChange}
+            onNameChange={onNameChange}
             panelKind="category"
             setSettingsPanel={setSettingsPanel}
             settingsPanel={settingsPanel}
@@ -1117,18 +1232,45 @@ function iconPanelKey(kind, id) {
   return `icon:${kind}:${id}`;
 }
 
+function namePanelKey(kind, id) {
+  return `name:${kind}:${id}`;
+}
+
 function ManagedItemRow({
   badgeCategory,
   item,
+  meta,
   onDelete,
   onIconChange,
+  onNameChange,
   panelKind,
   setSettingsPanel,
   settingsPanel,
 }) {
-  const panelKey = iconPanelKey(panelKind, item.id);
-  const isEditingIcon = settingsPanel === panelKey;
+  const iconKey = iconPanelKey(panelKind, item.id);
+  const nameKey = namePanelKey(panelKind, item.id);
+  const isEditingIcon = settingsPanel === iconKey;
+  const isEditingName = settingsPanel === nameKey;
+  const [draftName, setDraftName] = useState(item.name);
+  const [isSavingName, setIsSavingName] = useState(false);
   const badge = badgeCategory || item;
+  const trimmedDraftName = draftName.trim();
+
+  useEffect(() => {
+    if (isEditingName) {
+      setDraftName(item.name);
+    }
+  }, [isEditingName, item.name]);
+
+  const saveName = async () => {
+    if (!onNameChange || !trimmedDraftName || trimmedDraftName === item.name || isSavingName) return;
+    setIsSavingName(true);
+    try {
+      await onNameChange(item.id, trimmedDraftName);
+    } finally {
+      setIsSavingName(false);
+    }
+  };
 
   return (
     <>
@@ -1138,17 +1280,63 @@ function ManagedItemRow({
             aria-expanded={isEditingIcon}
             aria-label={`Cambiar icono de ${item.name}`}
             className={cx("icon-edit-button", isEditingIcon && "active")}
-            onClick={() => setSettingsPanel(isEditingIcon ? null : panelKey)}
+            onClick={() => setSettingsPanel(isEditingIcon ? null : iconKey)}
             type="button"
           >
             <CategoryBadge category={badge} />
           </button>
-          <strong>{item.name}</strong>
+          <span className="managed-text">
+            <strong>{item.name}</strong>
+            {meta && <small>{meta}</small>}
+          </span>
         </span>
-        <button aria-label="Eliminar" onClick={() => onDelete(item.id)} type="button">
-          <Trash2 size={16} />
-        </button>
+        <span className="managed-actions">
+          {onNameChange && (
+            <button
+              aria-expanded={isEditingName}
+              aria-label={`Editar nombre de ${item.name}`}
+              className={cx(isEditingName && "active")}
+              onClick={() => setSettingsPanel(isEditingName ? null : nameKey)}
+              type="button"
+            >
+              <Pencil size={16} />
+            </button>
+          )}
+          <button aria-label="Eliminar" onClick={() => onDelete(item.id)} type="button">
+            <Trash2 size={16} />
+          </button>
+        </span>
       </div>
+      {isEditingName && (
+        <div className="managed-name-editor">
+          <input
+            aria-label={`Nombre de ${item.name}`}
+            autoFocus
+            onChange={(event) => setDraftName(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                void saveName();
+              }
+              if (event.key === "Escape") {
+                setSettingsPanel(null);
+              }
+            }}
+            value={draftName}
+          />
+          <button
+            aria-label="Guardar nombre"
+            disabled={!trimmedDraftName || trimmedDraftName === item.name || isSavingName}
+            onClick={() => void saveName()}
+            type="button"
+          >
+            <Check size={16} />
+          </button>
+          <button aria-label="Cancelar edición" onClick={() => setSettingsPanel(null)} type="button">
+            <X size={16} />
+          </button>
+        </div>
+      )}
       {isEditingIcon && (
         <div className="managed-icon-editor">
           <IconPicker selected={item.icon} onChange={(icon) => onIconChange(item.id, icon)} />
@@ -1167,6 +1355,7 @@ function CompaniesView({
   onCreateCompany,
   onDeleteCompany,
   onUpdateCompanyIcon,
+  onUpdateCompanyName,
   setSettingsPanel,
   settingsPanel,
   setView,
@@ -1199,6 +1388,7 @@ function CompaniesView({
               key={company.id}
               onDelete={onDeleteCompany}
               onIconChange={onUpdateCompanyIcon}
+              onNameChange={onUpdateCompanyName}
               panelKind="company"
               setSettingsPanel={setSettingsPanel}
               settingsPanel={settingsPanel}
@@ -1218,6 +1408,7 @@ function CompanyCategoriesView({
   onCreateCompanyCategory,
   onDeleteCompanyCategory,
   onUpdateCompanyCategoryIcon,
+  onUpdateCompanyCategoryName,
   setSettingsPanel,
   settingsPanel,
   setView,
@@ -1226,7 +1417,7 @@ function CompanyCategoriesView({
     <section className="page-stack manage-page">
       <ManageHeader
         count={`${companyCategories.length} categorías`}
-        title="Categorías de empresa"
+        title="Categorías por empresa"
         onBack={() => setView("settings")}
       />
       <button
@@ -1234,7 +1425,7 @@ function CompanyCategoriesView({
         onClick={() => setSettingsPanel(settingsPanel === "companyCategory" ? null : "companyCategory")}
       >
         <Plus size={16} />
-        Nueva categoría de empresa
+        Nueva categoría por empresa
       </button>
       {settingsPanel === "companyCategory" && (
         <NewCompanyCategoryPanel
@@ -1248,14 +1439,16 @@ function CompanyCategoriesView({
         if (cats.length === 0) return null;
         return (
           <Card className="managed-card" key={company.id}>
-            <p className="section-label expense">{company.name}</p>
+            <p className="section-label">{company.name}</p>
             <div className="managed-list">
               {cats.map((cat) => (
                 <ManagedItemRow
                   item={cat}
                   key={cat.id}
+                  meta={cat.type === "income" ? "Ingreso" : "Gasto"}
                   onDelete={onDeleteCompanyCategory}
                   onIconChange={onUpdateCompanyCategoryIcon}
+                  onNameChange={onUpdateCompanyCategoryName}
                   panelKind="companyCategory"
                   setSettingsPanel={setSettingsPanel}
                   settingsPanel={settingsPanel}
@@ -1277,6 +1470,7 @@ function CategoryDetailsView({
   onCreateCategoryDetail,
   onDeleteCategoryDetail,
   onUpdateCategoryDetailIcon,
+  onUpdateCategoryDetailName,
   setSettingsPanel,
   settingsPanel,
   setView,
@@ -1321,6 +1515,7 @@ function CategoryDetailsView({
                   key={detail.id}
                   onDelete={onDeleteCategoryDetail}
                   onIconChange={onUpdateCategoryDetailIcon}
+                  onNameChange={onUpdateCategoryDetailName}
                   panelKind="categoryDetail"
                   setSettingsPanel={setSettingsPanel}
                   settingsPanel={settingsPanel}
@@ -1341,6 +1536,7 @@ function IncomeOriginsView({
   onCreateIncomeOrigin,
   onDeleteIncomeOrigin,
   onUpdateIncomeOriginIcon,
+  onUpdateIncomeOriginName,
   setSettingsPanel,
   settingsPanel,
   setView,
@@ -1377,6 +1573,7 @@ function IncomeOriginsView({
               key={origin.id}
               onDelete={onDeleteIncomeOrigin}
               onIconChange={onUpdateIncomeOriginIcon}
+              onNameChange={onUpdateIncomeOriginName}
               panelKind="incomeOrigin"
               setSettingsPanel={setSettingsPanel}
               settingsPanel={settingsPanel}
@@ -1455,11 +1652,12 @@ function NewItemPanel({ title, namePlaceholder, defaultIcon, onClose, onSave }) 
 function NewCompanyCategoryPanel({ companies, onClose, onSave }) {
   const [name, setName] = useState("");
   const [companyId, setCompanyId] = useState(companies[0]?.id || "");
+  const [type, setType] = useState("expense");
   const [icon, setIcon] = useState("package");
 
   return (
     <Card className="inline-form">
-      <FormHeader title="Nueva categoría de empresa" onClose={onClose} />
+      <FormHeader title="Nueva categoría por empresa" onClose={onClose} />
       <label>
         Nombre
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre de la categoría" />
@@ -1472,11 +1670,18 @@ function NewCompanyCategoryPanel({ companies, onClose, onSave }) {
           ))}
         </select>
       </label>
+      <label>
+        Tipo
+        <select value={type} onChange={(e) => setType(e.target.value)}>
+          <option value="expense">Gasto</option>
+          <option value="income">Ingreso</option>
+        </select>
+      </label>
       <IconPicker selected={icon} onChange={setIcon} />
       <button
         className="submit neutral"
         disabled={!name.trim() || !companyId}
-        onClick={() => onSave({ name: name.trim(), icon, companyId })}
+        onClick={() => onSave({ name: name.trim(), icon, companyId, type })}
       >
         Agregar
       </button>
@@ -1597,11 +1802,13 @@ function TransactionSheet({
     previousDetailCategoryId.current = categoryId;
   }, [categoryId, categoryDetails]);
 
-  const hasCompanyCategories = type === "expense" && companies.some((c) => c.id === companyId);
-  let categoryListForCompany = categories.filter((category) => category.type === type || category.type === "both");
-  if (hasCompanyCategories) {
-    categoryListForCompany = companyCategories.filter((c) => c.companyId === companyId);
-  }
+  const companyCategoryList = companyCategories.filter(
+    (category) => category.companyId === companyId && (category.type === type || category.type === "both"),
+  );
+  const hasCompanyCategories = companyCategoryList.length > 0;
+  const categoryListForCompany = hasCompanyCategories
+    ? companyCategoryList
+    : categories.filter((category) => category.type === type || category.type === "both");
   const sortedCategories = hasCompanyCategories
     ? categoryListForCompany
     : [...categoryListForCompany].sort((a, b) => a.name.localeCompare(b.name, "es"));
@@ -1613,8 +1820,8 @@ function TransactionSheet({
   const hasDetails = detailOptions.length > 0;
   const selectedDetail = detailOptions.find((detail) => detail.id === detailId);
 
-  // "Comprador" field appears only when category is VENTA on an income transaction
-  const isVenta = type === "income" && selectedCategory?.id === "venta";
+  const isVenta = type === "income" && selectedCategory?.name?.toUpperCase() === "VENTA";
+  const canSelectCategory = Boolean(companyId);
 
   const valid =
     parseAmountInput(amount) > 0 &&
@@ -1693,12 +1900,16 @@ function TransactionSheet({
 
           <PickerField
             label="Categoría"
+            disabled={!canSelectCategory}
             open={openSelect === "category"}
-            placeholder="Seleccionar categoría"
+            placeholder={canSelectCategory ? "Seleccionar categoría" : "Selecciona empresa primero"}
             selected={selectedCategory?.name}
-            onToggle={() => setOpenSelect(openSelect === "category" ? null : "category")}
+            onToggle={() => {
+              if (!canSelectCategory) return;
+              setOpenSelect(openSelect === "category" ? null : "category");
+            }}
           />
-          {openSelect === "category" && (
+          {canSelectCategory && openSelect === "category" && (
             <div className="category-picker">
               {sortedCategories.map((category) => (
                 <button
@@ -1793,11 +2004,11 @@ function TransactionSheet({
 
 // ─── Shared primitives ────────────────────────────────────────────────────────
 
-function PickerField({ label, onToggle, open, placeholder, selected }) {
+function PickerField({ disabled = false, label, onToggle, open, placeholder, selected }) {
   return (
     <div className="picker-wrap">
       <p>{label}</p>
-      <button className="picker-field" onClick={onToggle} type="button">
+      <button className="picker-field" disabled={disabled} onClick={onToggle} type="button">
         <span className={!selected ? "muted" : ""}>{selected || placeholder}</span>
         {open ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
       </button>

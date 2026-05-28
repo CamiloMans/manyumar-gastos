@@ -197,6 +197,29 @@ async function updateIcon(table, id, icon, mapper, action) {
   return mapper(data);
 }
 
+async function updateName(table, id, name, mapper, action) {
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from(table)
+    .update({ nombre: name })
+    .eq("id", id)
+    .select("*")
+    .single();
+
+  throwIfError(error, action);
+  return mapper(data);
+}
+
+async function updateTransactionSnapshot(matchColumn, id, updateColumn, name, action) {
+  const client = requireSupabase();
+  const { error } = await client
+    .from(manyumarTables.transactions)
+    .update({ [updateColumn]: name })
+    .eq(matchColumn, id);
+
+  throwIfError(error, action);
+}
+
 export async function loadManyumarData() {
   const client = requireSupabase();
 
@@ -255,6 +278,26 @@ export async function updateCompanyIcon(id, icon) {
   );
 }
 
+export async function updateCompanyName(id, name) {
+  return updateName(
+    manyumarTables.companies,
+    id,
+    name,
+    mapCompany,
+    `No se pudo actualizar ${manyumarTables.companies}`,
+  );
+}
+
+export async function updateTransactionCompanyName(companyId, name) {
+  await updateTransactionSnapshot(
+    "empresa_id",
+    companyId,
+    "nombre_empresa",
+    name,
+    `No se pudo actualizar ${manyumarTables.transactions}`,
+  );
+}
+
 export async function createCategory(category) {
   return insertAndReturn(
     manyumarTables.categories,
@@ -273,6 +316,16 @@ export async function updateCategoryIcon(id, icon) {
     manyumarTables.categories,
     id,
     icon,
+    mapCategory,
+    `No se pudo actualizar ${manyumarTables.categories}`,
+  );
+}
+
+export async function updateCategoryName(id, name) {
+  return updateName(
+    manyumarTables.categories,
+    id,
+    name,
     mapCategory,
     `No se pudo actualizar ${manyumarTables.categories}`,
   );
@@ -305,6 +358,16 @@ export async function updateCompanyCategoryIcon(id, icon) {
   );
 }
 
+export async function updateCompanyCategoryName(id, name) {
+  return updateName(
+    manyumarTables.companyCategories,
+    id,
+    name,
+    mapCompanyCategory,
+    `No se pudo actualizar ${manyumarTables.companyCategories}`,
+  );
+}
+
 export async function createCategoryDetail(detail) {
   return insertAndReturn(
     manyumarTables.categoryDetails,
@@ -328,6 +391,26 @@ export async function updateCategoryDetailIcon(id, icon) {
   );
 }
 
+export async function updateCategoryDetailName(id, name) {
+  return updateName(
+    manyumarTables.categoryDetails,
+    id,
+    name,
+    mapCategoryDetail,
+    `No se pudo actualizar ${manyumarTables.categoryDetails}`,
+  );
+}
+
+export async function updateTransactionDetailName(detailId, name) {
+  await updateTransactionSnapshot(
+    "detalle_id",
+    detailId,
+    "nombre_detalle",
+    name,
+    `No se pudo actualizar ${manyumarTables.transactions}`,
+  );
+}
+
 export async function createIncomeOrigin(origin) {
   return insertAndReturn(
     manyumarTables.incomeOrigins,
@@ -348,6 +431,26 @@ export async function updateIncomeOriginIcon(id, icon) {
     icon,
     mapIncomeOrigin,
     `No se pudo actualizar ${manyumarTables.incomeOrigins}`,
+  );
+}
+
+export async function updateIncomeOriginName(id, name) {
+  return updateName(
+    manyumarTables.incomeOrigins,
+    id,
+    name,
+    mapIncomeOrigin,
+    `No se pudo actualizar ${manyumarTables.incomeOrigins}`,
+  );
+}
+
+export async function updateTransactionIncomeOriginName(originId, name) {
+  await updateTransactionSnapshot(
+    "origen_ingreso_id",
+    originId,
+    "nombre_origen_ingreso",
+    name,
+    `No se pudo actualizar ${manyumarTables.transactions}`,
   );
 }
 

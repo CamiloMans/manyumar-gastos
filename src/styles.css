@@ -928,10 +928,31 @@ button {
   padding: 15px 16px;
 }
 
+.managed-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.managed-actions button {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  color: var(--muted);
+}
+
+.managed-actions button.active,
+.managed-actions button:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
 .managed-main {
   display: inline-flex;
   align-items: center;
   gap: 14px;
+  flex: 1 1 auto;
   min-width: 0;
 }
 
@@ -940,6 +961,18 @@ button {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.managed-text {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.managed-text small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .managed-row .icon-edit-button {
@@ -959,7 +992,48 @@ button {
   padding: 0 16px 16px 70px;
 }
 
+.managed-name-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 38px 38px;
+  gap: 8px;
+  padding: 0 16px 16px 70px;
+}
+
+.managed-name-editor input {
+  height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 0 12px;
+}
+
+.managed-name-editor input:focus {
+  border-color: rgba(15, 106, 96, 0.42);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(15, 106, 96, 0.1);
+}
+
+.managed-name-editor button {
+  width: 38px;
+  height: 40px;
+  border-radius: 10px;
+  color: var(--accent);
+}
+
+.managed-name-editor button:disabled {
+  cursor: not-allowed;
+  color: var(--muted-2);
+  opacity: 0.55;
+}
+
 .managed-icon-editor + .managed-row {
+  border-top: 1px solid var(--border);
+}
+
+.managed-name-editor + .managed-row {
   border-top: 1px solid var(--border);
 }
 
@@ -1187,6 +1261,13 @@ select:focus,
   text-align: left;
 }
 
+.picker-field:disabled {
+  cursor: not-allowed;
+  background: rgba(237, 243, 236, 0.72);
+  color: var(--muted-2);
+  opacity: 1;
+}
+
 .muted {
   color: var(--muted-2);
 }
@@ -1210,10 +1291,18 @@ select:focus,
   padding: 0 12px;
   border: 0;
   background: var(--card);
+  color: var(--text);
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
   text-align: left;
+}
+
+.transaction-sheet .category-picker button,
+.transaction-sheet .option-list button,
+.transaction-sheet .category-picker button.selected,
+.transaction-sheet .option-list button.selected {
+  color: var(--text);
 }
 
 .category-picker button + button,

@@ -170,7 +170,15 @@ values
   ('servicio-materiales', 'servicio', 'MATERIALES', 'package', 'expense', 50),
   ('servicio-mantencion', 'servicio', 'MANTENCION', 'wrench', 'expense', 60),
   ('servicio-sueldos', 'servicio', 'SUELDOS', 'coins', 'expense', 70),
-  ('servicio-servicios', 'servicio', 'SERVICIOS', 'receipt', 'expense', 80)
+  ('servicio-servicios', 'servicio', 'SERVICIOS', 'receipt', 'expense', 80),
+  ('manyumar-prestamo-ingreso', 'manyumar', 'PRESTAMO', 'handshake', 'income', 90),
+  ('manyumar-serv-cosecha', 'manyumar', 'SERV. COSECHA', 'wheat', 'income', 100),
+  ('manyumar-serv-siembra', 'manyumar', 'SERV. SIEMBRA', 'sprout', 'income', 110),
+  ('manyumar-venta', 'manyumar', 'VENTA', 'dollar', 'income', 120),
+  ('servicio-prestamo-ingreso', 'servicio', 'PRESTAMO', 'handshake', 'income', 130),
+  ('servicio-serv-cosecha', 'servicio', 'SERV. COSECHA', 'wheat', 'income', 140),
+  ('servicio-serv-siembra', 'servicio', 'SERV. SIEMBRA', 'sprout', 'income', 150),
+  ('servicio-venta', 'servicio', 'VENTA', 'dollar', 'income', 160)
 on conflict (id) do update
 set empresa_id = excluded.empresa_id,
     nombre = excluded.nombre,
