@@ -8,10 +8,14 @@ import {
   CircleCheckBig,
   Clock3,
   History,
+  ListChecks,
   Package,
+  Pencil,
   Plus,
   RotateCcw,
   Ship,
+  Square,
+  SquareCheckBig,
   Wrench,
   X,
 } from "lucide-react";
@@ -22,6 +26,8 @@ import {
   createMaintenancePlan,
   archiveAsset,
   loadMaintenanceData,
+  updateAsset,
+  updateRequirementChecklist,
 } from "./maintenanceRepository";
 
 function inputDate(date = new Date()) {
@@ -37,6 +43,17 @@ function formatDate(date) {
     month: "short",
     year: "numeric",
   });
+}
+
+function addFrequency(dateStr, amount, unit) {
+  const [year, month, day] = dateStr.slice(0, 10).split("-").map(Number);
+  const base = new Date(year, month - 1, day);
+  const n = Number(amount) || 0;
+  if (unit === "dias") base.setDate(base.getDate() + n);
+  else if (unit === "semanas") base.setDate(base.getDate() + n * 7);
+  else if (unit === "meses") base.setMonth(base.getMonth() + n);
+  else if (unit === "anos") base.setFullYear(base.getFullYear() + n);
+  return inputDate(base);
 }
 
 function frequencyLabel(plan) {
@@ -134,6 +151,19 @@ export default function MaintenanceModule({ newAssetSignal = 0 }) {
     }
   };
 
+  const handleUpdateAsset = async (id, values) => {
+    setSaving(true);
+    try {
+      await updateAsset(id, values);
+      await loadData();
+      setSheet(null);
+    } catch (actionError) {
+      reportError(actionError, "No se pudo actualizar el activo.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleApprove = async (requirement) => {
     try {
       const saved = await approveRequirement(requirement.id);
@@ -153,6 +183,16 @@ export default function MaintenanceModule({ newAssetSignal = 0 }) {
       reportError(actionError, "No se pudo registrar la realización.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleToggleChecklist = async (requirementId, checklist) => {
+    setRequirements((current) => current.map((item) => (item.id === requirementId ? { ...item, checklist } : item)));
+    try {
+      await updateRequirementChecklist(requirementId, checklist);
+    } catch (actionError) {
+      reportError(actionError, "No se pudo actualizar el checklist.");
+      await loadData();
     }
   };
 
@@ -212,6 +252,7 @@ export default function MaintenanceModule({ newAssetSignal = 0 }) {
             assets={activeAssets}
             plans={plans}
             onAddPlan={(asset) => setSheet({ type: "plan", asset })}
+            onEdit={(asset) => setSheet({ type: "editAsset", asset })}
             onDelete={handleDeleteAsset}
             onNew={() => setSheet({ type: "asset" })}
           />
@@ -223,6 +264,9 @@ export default function MaintenanceModule({ newAssetSignal = 0 }) {
 
       <MaintenanceNav tab={tab} setTab={setTab} />
       {sheet?.type === "asset" && <AssetSheet disabled={saving} onClose={() => setSheet(null)} onSave={handleCreateAsset} />}
+      {sheet?.type === "editAsset" && (
+        <AssetEditSheet asset={sheet.asset} disabled={saving} onClose={() => setSheet(null)} onSave={handleUpdateAsset} />
+      )}
       {sheet?.type === "plan" && (
         <PlanSheet asset={sheet.asset} disabled={saving} onClose={() => setSheet(null)} onSave={handleCreatePlan} />
       )}
@@ -230,8 +274,10 @@ export default function MaintenanceModule({ newAssetSignal = 0 }) {
         <CompleteSheet
           disabled={saving}
           requirement={sheet.requirement}
+          plan={plans.find((item) => item.id === sheet.requirement.planId)}
           onClose={() => setSheet(null)}
           onSave={handleComplete}
+          onToggleChecklist={handleToggleChecklist}
         />
       )}
     </>
@@ -288,6 +334,12 @@ function AgendaView({ assets, onApprove, onComplete, onNew, plans, requirements 
                 <Wrench size={17} />
                 <div><b>{plan?.task || "Mantenimiento"}</b><span>{plan ? frequencyLabel(plan) : ""}</span></div>
               </div>
+              {requirement.checklist?.length > 0 && (
+                <div className="requirement-checklist-progress">
+                  <ListChecks size={15} />
+                  <span>{requirement.checklist.filter((item) => item.done).length}/{requirement.checklist.length} pasos del checklist</span>
+                </div>
+              )}
               <div className="requirement-date">
                 <CalendarClock size={16} />
                 <span>{isDue(requirement) ? "Programado para" : "Próxima fecha"}</span>
@@ -306,7 +358,7 @@ function AgendaView({ assets, onApprove, onComplete, onNew, plans, requirements 
   );
 }
 
-function AssetsView({ assets, onAddPlan, onDelete, onNew, plans }) {
+function AssetsView({ assets, onAddPlan, onDelete, onEdit, onNew, plans }) {
   return (
     <div className="maintenance-section">
       <div className="maintenance-section-title">
@@ -323,8 +375,11 @@ function AssetsView({ assets, onAddPlan, onDelete, onNew, plans }) {
               <article className="asset-card" key={asset.id}>
                 <div className="asset-card-header">
                   <span className="asset-symbol large"><AssetIcon type={asset.type} size={23} /></span>
-                  <div><span>{asset.type === "embarcacion" ? "EMBARCACIÓN" : "EQUIPAMIENTO"}</span><h4>{asset.name}</h4><p>{asset.identifier || "Sin identificador"}</p></div>
-                  <button className="asset-delete" onClick={() => onDelete(asset)} aria-label={`Archivar ${asset.name}`} title="Archivar activo"><Archive size={17} /></button>
+                  <div><span>{asset.type === "embarcacion" ? "EMBARCACIÓN" : "EQUIPAMIENTO"}</span><h4>{asset.name}</h4>{asset.identifier && <p>{asset.identifier}</p>}</div>
+                  <div className="asset-card-actions">
+                    <button className="asset-edit" onClick={() => onEdit(asset)} aria-label={`Editar ${asset.name}`} title="Editar activo"><Pencil size={16} /></button>
+                    <button className="asset-delete" onClick={() => onDelete(asset)} aria-label={`Archivar ${asset.name}`} title="Archivar activo"><Archive size={17} /></button>
+                  </div>
                 </div>
                 <div className="asset-plans">
                   {assetPlans.map((plan) => (
@@ -361,6 +416,9 @@ function HistoryView({ assets, plans, requirements }) {
                 <div>
                   <b>{plan?.task || "Mantenimiento"}</b>
                   <span>{asset?.name || "Activo"} · {formatDate(requirement.completedDate)}</span>
+                  {requirement.checklist?.length > 0 && (
+                    <p className="history-checklist">{requirement.checklist.filter((item) => item.done).length}/{requirement.checklist.length} pasos completados</p>
+                  )}
                   {(requirement.completedBy || requirement.notes) && <p>{requirement.completedBy || "Sin responsable"}{requirement.notes ? ` — ${requirement.notes}` : ""}</p>}
                 </div>
               </article>
@@ -416,16 +474,17 @@ function SheetFrame({ children, disabled, onClose, title }) {
 function AssetSheet({ disabled, onClose, onSave }) {
   const [type, setType] = useState("embarcacion");
   const [name, setName] = useState("");
-  const [identifier, setIdentifier] = useState("");
   const [description, setDescription] = useState("");
-  const [task, setTask] = useState("");
+  const [steps, setSteps] = useState([""]);
   const [frequencyAmount, setFrequencyAmount] = useState(1);
   const [frequencyUnit, setFrequencyUnit] = useState("meses");
   const [startDate, setStartDate] = useState(inputDate());
 
+  const hasStep = steps.some((step) => step.trim());
+
   const submit = (event) => {
     event.preventDefault();
-    onSave({ asset: { type, name, identifier, description }, plan: { task, frequencyAmount, frequencyUnit, startDate } });
+    onSave({ asset: { type, name, identifier: "", description }, plan: { steps, frequencyAmount, frequencyUnit, startDate } });
   };
 
   return (
@@ -436,50 +495,159 @@ function AssetSheet({ disabled, onClose, onSave }) {
           <button type="button" className={type === "equipamiento" ? "selected" : ""} onClick={() => setType("equipamiento")}><Package size={21} /><span>Equipamiento</span></button>
         </div>
         <Field label="Nombre *"><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Manyu I" required /></Field>
-        <Field label="Matrícula o código"><input value={identifier} onChange={(e) => setIdentifier(e.target.value)} placeholder="Ej. CB-1234" /></Field>
         <Field label="Descripción"><textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Información útil del activo" /></Field>
         <div className="form-divider"><span>PRIMER MANTENIMIENTO</span></div>
-        <Field label="¿Qué se va a repetir? *"><textarea value={task} onChange={(e) => setTask(e.target.value)} placeholder="Ej. Cambio de aceite y filtros" required /></Field>
+        <Field label="Checklist a repetir *">
+          <ChecklistEditor steps={steps} onChange={setSteps} disabled={disabled} />
+        </Field>
         <FrequencyFields amount={frequencyAmount} onAmount={setFrequencyAmount} unit={frequencyUnit} onUnit={setFrequencyUnit} />
         <Field label="Primera fecha"><input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required /></Field>
-        <button className="submit neutral" disabled={disabled || !name.trim() || !task.trim()}>{disabled ? "Guardando..." : "Crear activo y mantenimiento"}</button>
+        <button className="submit neutral" disabled={disabled || !name.trim() || !hasStep}>{disabled ? "Guardando..." : "Crear activo y mantenimiento"}</button>
+      </form>
+    </SheetFrame>
+  );
+}
+
+function AssetEditSheet({ asset, disabled, onClose, onSave }) {
+  const [type, setType] = useState(asset.type);
+  const [name, setName] = useState(asset.name);
+  const [description, setDescription] = useState(asset.description);
+
+  const submit = (event) => {
+    event.preventDefault();
+    onSave(asset.id, { type, name, identifier: asset.identifier, description });
+  };
+
+  return (
+    <SheetFrame disabled={disabled} onClose={onClose} title="Editar activo">
+      <form className="sheet-body maintenance-form" onSubmit={submit}>
+        <div className="asset-type-picker">
+          <button type="button" className={type === "embarcacion" ? "selected" : ""} onClick={() => setType("embarcacion")}><Ship size={21} /><span>Embarcación</span></button>
+          <button type="button" className={type === "equipamiento" ? "selected" : ""} onClick={() => setType("equipamiento")}><Package size={21} /><span>Equipamiento</span></button>
+        </div>
+        <Field label="Nombre *"><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Manyu I" required /></Field>
+        <Field label="Descripción"><textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Información útil del activo" /></Field>
+        <button className="submit neutral" disabled={disabled || !name.trim()}>{disabled ? "Guardando..." : "Guardar cambios"}</button>
       </form>
     </SheetFrame>
   );
 }
 
 function PlanSheet({ asset, disabled, onClose, onSave }) {
-  const [task, setTask] = useState("");
+  const [steps, setSteps] = useState([""]);
   const [frequencyAmount, setFrequencyAmount] = useState(1);
   const [frequencyUnit, setFrequencyUnit] = useState("meses");
   const [startDate, setStartDate] = useState(inputDate());
+  const hasStep = steps.some((step) => step.trim());
   return (
     <SheetFrame disabled={disabled} onClose={onClose} title="Nueva pauta">
-      <form className="sheet-body maintenance-form" onSubmit={(event) => { event.preventDefault(); onSave({ assetId: asset.id, task, frequencyAmount, frequencyUnit, startDate }); }}>
+      <form className="sheet-body maintenance-form" onSubmit={(event) => { event.preventDefault(); onSave({ assetId: asset.id, steps, frequencyAmount, frequencyUnit, startDate }); }}>
         <div className="selected-asset"><span className="asset-symbol"><AssetIcon type={asset.type} /></span><div><span>ACTIVO</span><b>{asset.name}</b></div></div>
-        <Field label="¿Qué se va a repetir? *"><textarea value={task} onChange={(e) => setTask(e.target.value)} placeholder="Describe el mantenimiento" required /></Field>
+        <Field label="Checklist a repetir *">
+          <ChecklistEditor steps={steps} onChange={setSteps} disabled={disabled} />
+        </Field>
         <FrequencyFields amount={frequencyAmount} onAmount={setFrequencyAmount} unit={frequencyUnit} onUnit={setFrequencyUnit} />
         <Field label="Primera fecha"><input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required /></Field>
-        <button className="submit neutral" disabled={disabled || !task.trim()}>{disabled ? "Guardando..." : "Crear pauta"}</button>
+        <button className="submit neutral" disabled={disabled || !hasStep}>{disabled ? "Guardando..." : "Crear pauta"}</button>
       </form>
     </SheetFrame>
   );
 }
 
-function CompleteSheet({ disabled, onClose, onSave }) {
+function CompleteSheet({ disabled, onClose, onSave, onToggleChecklist, plan, requirement }) {
   const [date, setDate] = useState(inputDate());
   const [completedBy, setCompletedBy] = useState("");
   const [notes, setNotes] = useState("");
+  const [items, setItems] = useState(() => requirement.checklist || []);
+  const [nextDate, setNextDate] = useState(() => (plan ? addFrequency(inputDate(), plan.frequencyAmount, plan.frequencyUnit) : ""));
+  const [nextManual, setNextManual] = useState(false);
+
+  useEffect(() => {
+    if (!nextManual && plan) setNextDate(addFrequency(date, plan.frequencyAmount, plan.frequencyUnit));
+  }, [date, plan, nextManual]);
+
+  const toggle = (index) => {
+    const next = items.map((item, i) => (i === index ? { ...item, done: !item.done } : item));
+    setItems(next);
+    onToggleChecklist(requirement.id, next);
+  };
+
+  const pending = items.filter((item) => !item.done).length;
+
   return (
     <SheetFrame disabled={disabled} onClose={onClose} title="Registrar realización">
-      <form className="sheet-body maintenance-form" onSubmit={(event) => { event.preventDefault(); onSave({ date, completedBy, notes }); }}>
-        <div className="completion-callout"><CircleCheckBig size={25} /><div><b>Confirma el trabajo realizado</b><span>Al guardar, se programará automáticamente el siguiente requerimiento.</span></div></div>
+      <form className="sheet-body maintenance-form" onSubmit={(event) => { event.preventDefault(); onSave({ date, completedBy, notes, checklist: items, nextDate }); }}>
+        <div className="completion-callout"><CircleCheckBig size={25} /><div><b>Confirma el trabajo realizado</b><span>El siguiente requerimiento se programará para la fecha de vencimiento que indiques.</span></div></div>
+        {items.length > 0 && (
+          <ChecklistRun items={items} onToggle={toggle} disabled={disabled} pending={pending} />
+        )}
         <Field label="Fecha de realización *"><input type="date" value={date} onChange={(e) => setDate(e.target.value)} required /></Field>
+        <Field label="Próximo vencimiento *">
+          <input type="date" value={nextDate} min={date} onChange={(e) => { setNextDate(e.target.value); setNextManual(true); }} required />
+        </Field>
         <Field label="Realizado por"><input value={completedBy} onChange={(e) => setCompletedBy(e.target.value)} placeholder="Nombre del responsable" /></Field>
         <Field label="Observaciones"><textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Trabajos, repuestos o hallazgos" /></Field>
-        <button className="submit neutral" disabled={disabled}>{disabled ? "Guardando..." : "Confirmar realización"}</button>
+        <button className="submit neutral" disabled={disabled || !nextDate}>{disabled ? "Guardando..." : "Confirmar realización"}</button>
       </form>
     </SheetFrame>
+  );
+}
+
+function ChecklistEditor({ disabled, onChange, steps }) {
+  const update = (index, value) => onChange(steps.map((step, i) => (i === index ? value : step)));
+  const add = () => onChange([...steps, ""]);
+  const remove = (index) => onChange(steps.length === 1 ? [""] : steps.filter((_, i) => i !== index));
+
+  return (
+    <div className="checklist-editor">
+      {steps.map((step, index) => (
+        <div className="checklist-edit-row" key={index}>
+          <span className="checklist-edit-index">{index + 1}</span>
+          <input
+            value={step}
+            onChange={(event) => update(index, event.target.value)}
+            placeholder={index === 0 ? "Ej. Cambio de aceite y filtros" : "Otro paso del checklist"}
+            disabled={disabled}
+          />
+          <button
+            type="button"
+            className="checklist-edit-remove"
+            onClick={() => remove(index)}
+            disabled={disabled || (steps.length === 1 && !steps[0].trim())}
+            aria-label={`Quitar paso ${index + 1}`}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      ))}
+      <button type="button" className="checklist-add-step" onClick={add} disabled={disabled}>
+        <Plus size={15} /> Agregar paso
+      </button>
+    </div>
+  );
+}
+
+function ChecklistRun({ disabled, items, onToggle, pending }) {
+  return (
+    <div className="checklist-run">
+      <div className="checklist-run-head">
+        <span><ListChecks size={15} /> Checklist</span>
+        <b>{pending === 0 ? "Todo listo" : `Faltan ${pending}`}</b>
+      </div>
+      {items.map((item, index) => (
+        <button
+          type="button"
+          key={index}
+          className={`checklist-run-item ${item.done ? "done" : ""}`}
+          onClick={() => onToggle(index)}
+          disabled={disabled}
+          aria-pressed={item.done}
+        >
+          <span className="checklist-box">{item.done ? <SquareCheckBig size={19} /> : <Square size={19} />}</span>
+          <span className="checklist-text">{item.text}</span>
+        </button>
+      ))}
+    </div>
   );
 }
 

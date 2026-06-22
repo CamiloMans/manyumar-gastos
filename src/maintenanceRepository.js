@@ -15,6 +15,17 @@ function throwIfError(error, action) {
   if (error) throw new Error(`${action}: ${error.message}`);
 }
 
+function cleanSteps(steps) {
+  return (Array.isArray(steps) ? steps : []).map((step) => String(step).trim()).filter(Boolean);
+}
+
+function serializeChecklist(checklist) {
+  return (Array.isArray(checklist) ? checklist : []).map((item) => ({
+    texto: String(item?.text ?? "").trim(),
+    hecho: Boolean(item?.done),
+  }));
+}
+
 function mapActivo(row) {
   return {
     id: row.id,
@@ -33,6 +44,7 @@ function mapPlan(row) {
     id: row.id,
     assetId: row.activo_id,
     task: row.tarea,
+    steps: Array.isArray(row.pasos) ? row.pasos.map((paso) => String(paso)) : [],
     frequencyAmount: Number(row.frecuencia_cantidad),
     frequencyUnit: row.frecuencia_unidad,
     startDate: row.fecha_inicio,
@@ -55,6 +67,9 @@ function mapRequerimiento(row) {
     completedDate: row.fecha_realizacion,
     completedBy: row.realizado_por || "",
     notes: row.observaciones || "",
+    checklist: Array.isArray(row.checklist)
+      ? row.checklist.map((item) => ({ text: String(item?.texto ?? ""), done: Boolean(item?.hecho) }))
+      : [],
     createdAt: row.creado_en,
     updatedAt: row.actualizado_en,
   };
@@ -100,13 +115,34 @@ async function createAsset(asset) {
   return mapActivo(data);
 }
 
+export async function updateAsset(id, asset) {
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from(tablas.activos)
+    .update({
+      tipo: asset.type,
+      nombre: asset.name.trim(),
+      identificador: asset.identifier.trim(),
+      descripcion: asset.description.trim(),
+    })
+    .eq("id", id)
+    .select("*")
+    .single();
+
+  throwIfError(error, `No se pudo actualizar en ${tablas.activos}`);
+  return mapActivo(data);
+}
+
 export async function createMaintenancePlan(plan) {
   const client = requireSupabase();
+  const steps = cleanSteps(plan.steps);
+  if (!steps.length) throw new Error("Agrega al menos un paso al checklist del mantenimiento.");
   const { data, error } = await client
     .from(tablas.planes)
     .insert({
       activo_id: plan.assetId,
-      tarea: plan.task.trim(),
+      tarea: steps.join(" · "),
+      pasos: steps,
       frecuencia_cantidad: Number(plan.frequencyAmount),
       frecuencia_unidad: plan.frequencyUnit,
       fecha_inicio: plan.startDate,
@@ -151,20 +187,36 @@ export async function approveRequirement(id, approvedBy = "Usuario MANYU") {
 
 export async function completeRequirement(id, completion) {
   const client = requireSupabase();
+  const update = {
+    estado: "realizado",
+    fecha_realizacion: completion.date,
+    realizado_por: completion.completedBy.trim(),
+    observaciones: completion.notes.trim(),
+  };
+  if (completion.checklist) update.checklist = serializeChecklist(completion.checklist);
+  if (completion.nextDate) update.proxima_fecha_programada = completion.nextDate;
   const { data, error } = await client
     .from(tablas.requerimientos)
-    .update({
-      estado: "realizado",
-      fecha_realizacion: completion.date,
-      realizado_por: completion.completedBy.trim(),
-      observaciones: completion.notes.trim(),
-    })
+    .update(update)
     .eq("id", id)
     .eq("estado", "aprobado")
     .select("*")
     .single();
 
   throwIfError(error, `No se pudo completar en ${tablas.requerimientos}`);
+  return mapRequerimiento(data);
+}
+
+export async function updateRequirementChecklist(id, checklist) {
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from(tablas.requerimientos)
+    .update({ checklist: serializeChecklist(checklist) })
+    .eq("id", id)
+    .select("*")
+    .single();
+
+  throwIfError(error, `No se pudo actualizar el checklist en ${tablas.requerimientos}`);
   return mapRequerimiento(data);
 }
 

@@ -617,6 +617,24 @@ button {
   font-size: 16px;
 }
 
+.asset-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.asset-edit {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  color: var(--accent);
+  cursor: pointer;
+}
+
 .asset-delete {
   display: grid;
   width: 34px;
@@ -842,6 +860,151 @@ button {
 .completion-callout b { color: var(--dark); font-size: 13px; }
 .completion-callout { align-items: start; color: var(--income); }
 .completion-callout span { color: var(--muted); font-size: 11px; line-height: 1.4; }
+
+/* Checklist: editor de pasos en el plan */
+.checklist-editor {
+  display: grid;
+  gap: 8px;
+}
+
+.checklist-edit-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.checklist-edit-index {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.checklist-edit-row input {
+  width: 100%;
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+}
+
+.checklist-edit-row input:focus {
+  outline: 0;
+  border-color: var(--border-strong);
+  box-shadow: 0 0 0 3px var(--sheet-focus);
+}
+
+.checklist-edit-remove {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--expense-soft);
+  color: var(--expense);
+  cursor: pointer;
+}
+
+.checklist-edit-remove:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.checklist-add-step {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  gap: 6px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+/* Checklist: tachado por ocurrencia al registrar la realización */
+.checklist-run {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card-soft);
+}
+
+.checklist-run-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.checklist-run-head span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.checklist-run-head b { color: var(--muted); font-size: 11px; }
+
+.checklist-run-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--dark);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+}
+
+.checklist-run-item .checklist-box { display: grid; place-items: center; color: var(--muted); }
+.checklist-run-item .checklist-text { line-height: 1.35; }
+
+.checklist-run-item.done {
+  border-color: rgba(15, 106, 96, 0.28);
+  background: var(--income-soft);
+}
+
+.checklist-run-item.done .checklist-box { color: var(--income); }
+.checklist-run-item.done .checklist-text { color: var(--muted); text-decoration: line-through; }
+.checklist-run-item:disabled { cursor: not-allowed; opacity: 0.6; }
+
+/* Checklist: progreso en agenda e historial */
+.requirement-checklist-progress {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.requirement-checklist-progress svg { color: var(--accent); }
+.history-checklist { color: var(--accent) !important; }
 
 @media (prefers-reduced-motion: no-preference) {
   .module-drawer { animation: drawer-in 200ms ease both; }
