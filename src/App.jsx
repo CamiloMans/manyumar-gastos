@@ -28,6 +28,7 @@ import {
   Home,
   Landmark,
   Leaf,
+  Menu,
   Package,
   Pencil,
   PiggyBank,
@@ -52,6 +53,7 @@ import {
   Wrench,
   X,
 } from "lucide-react";
+import MaintenanceModule from "./MaintenanceModule";
 import { supabaseConfigMessage } from "./supabaseClient";
 import {
   createCategory,
@@ -354,6 +356,9 @@ function CategoryBadge({ category, compact = false }) {
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 function App() {
+  const [activeModule, setActiveModule] = useState("finances");
+  const [moduleMenuOpen, setModuleMenuOpen] = useState(false);
+  const [newAssetSignal, setNewAssetSignal] = useState(0);
   const [view, setView] = useState("home");
   const [selectedMonth, setSelectedMonth] = useState(() => firstDayOfMonth());
   const [transactions, setTransactions] = useState([]);
@@ -398,9 +403,9 @@ function App() {
   }, [loadData]);
 
   useEffect(() => {
-    document.body.classList.toggle("modal-open", Boolean(transactionModal));
+    document.body.classList.toggle("modal-open", Boolean(transactionModal) || moduleMenuOpen);
     return () => document.body.classList.remove("modal-open");
-  }, [transactionModal]);
+  }, [moduleMenuOpen, transactionModal]);
 
   useEffect(() => {
     if (companyFilterId !== "all" && !companies.some((company) => company.id === companyFilterId)) {
@@ -755,30 +760,41 @@ function App() {
 
   return (
     <div className="app-shell">
-      <Header disabled={isDataLoading || Boolean(dataError)} onAdd={setTransactionModal} />
+      <Header
+        activeModule={activeModule}
+        disabled={activeModule === "finances" && (isDataLoading || Boolean(dataError))}
+        onAdd={activeModule === "finances" ? setTransactionModal : () => setNewAssetSignal((value) => value + 1)}
+        onMenu={() => setModuleMenuOpen(true)}
+      />
       <main className="app-main">
-        {isDataLoading && <DataStatusCard title="Cargando datos" detail="Conectando con Supabase..." />}
-        {!isDataLoading && dataError && (
-          <DataStatusCard title="No se pudo usar Supabase" detail={dataError} action="Reintentar" onAction={loadData} />
-        )}
-        {!isDataLoading && !dataError && (
+        {activeModule === "maintenance" ? (
+          <MaintenanceModule newAssetSignal={newAssetSignal} />
+        ) : (
           <>
-            {view === "home" && <HomeView {...context} />}
-            {view === "expenses" && (
-              <LedgerView {...context} onDeleteTransaction={handleDeleteTransaction} type="expense" />
+            {isDataLoading && <DataStatusCard title="Cargando datos" detail="Conectando con Supabase..." />}
+            {!isDataLoading && dataError && (
+              <DataStatusCard title="No se pudo usar Supabase" detail={dataError} action="Reintentar" onAction={loadData} />
             )}
-            {view === "income" && <LedgerView {...context} onDeleteTransaction={handleDeleteTransaction} type="income" />}
-            {view === "settings" && <SettingsView setView={setView} />}
-            {view === "categories" && <CategoriesView {...context} />}
-            {view === "companies" && <CompaniesView {...context} />}
-            {view === "companyCategories" && <CompanyCategoriesView {...context} />}
-            {view === "categoryDetails" && <CategoryDetailsView {...context} />}
-            {view === "incomeOrigins" && <IncomeOriginsView {...context} />}
+            {!isDataLoading && !dataError && (
+              <>
+                {view === "home" && <HomeView {...context} />}
+                {view === "expenses" && (
+                  <LedgerView {...context} onDeleteTransaction={handleDeleteTransaction} type="expense" />
+                )}
+                {view === "income" && <LedgerView {...context} onDeleteTransaction={handleDeleteTransaction} type="income" />}
+                {view === "settings" && <SettingsView setView={setView} />}
+                {view === "categories" && <CategoriesView {...context} />}
+                {view === "companies" && <CompaniesView {...context} />}
+                {view === "companyCategories" && <CompanyCategoriesView {...context} />}
+                {view === "categoryDetails" && <CategoryDetailsView {...context} />}
+                {view === "incomeOrigins" && <IncomeOriginsView {...context} />}
+              </>
+            )}
           </>
         )}
       </main>
-      <BottomNav view={view} setView={setView} />
-      {transactionModal && (
+      {activeModule === "finances" && <BottomNav view={view} setView={setView} />}
+      {activeModule === "finances" && transactionModal && (
         <TransactionSheet
           categories={categories}
           categoryDetails={categoryDetails}
@@ -791,27 +807,82 @@ function App() {
           type={transactionModal.type}
         />
       )}
+      {moduleMenuOpen && (
+        <ModuleDrawer
+          activeModule={activeModule}
+          onClose={() => setModuleMenuOpen(false)}
+          onSelect={(module) => {
+            setActiveModule(module);
+            setModuleMenuOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }
 
 // ─── Header ───────────────────────────────────────────────────────────────────
 
-function Header({ disabled = false, onAdd }) {
+function Header({ activeModule, disabled = false, onAdd, onMenu }) {
   return (
     <header className="app-header">
       <div className="header-inner">
-        <h1>Manyumar</h1>
+        <div className="header-brand">
+          <button className="module-menu-button" aria-label="Cambiar módulo" onClick={onMenu} type="button">
+            <Menu size={23} />
+          </button>
+          <div>
+            <h1>Manyumar</h1>
+            <span>{activeModule === "maintenance" ? "Mantenimiento" : "Finanzas"}</span>
+          </div>
+        </div>
         <div className="header-actions">
-          <IconButton disabled={disabled} label="Agregar ingreso" tone="income" onClick={() => onAdd({ type: "income" })}>
-            <ArrowUpCircle size={24} />
-          </IconButton>
-          <IconButton disabled={disabled} label="Agregar gasto" tone="expense" onClick={() => onAdd({ type: "expense" })}>
-            <ArrowDownCircle size={24} />
-          </IconButton>
+          {activeModule === "finances" ? (
+            <>
+              <IconButton disabled={disabled} label="Agregar ingreso" tone="income" onClick={() => onAdd({ type: "income" })}>
+                <ArrowUpCircle size={24} />
+              </IconButton>
+              <IconButton disabled={disabled} label="Agregar gasto" tone="expense" onClick={() => onAdd({ type: "expense" })}>
+                <ArrowDownCircle size={24} />
+              </IconButton>
+            </>
+          ) : (
+            <IconButton disabled={disabled} label="Agregar activo" tone="maintenance" onClick={onAdd}>
+              <Plus size={24} />
+            </IconButton>
+          )}
         </div>
       </div>
     </header>
+  );
+}
+
+function ModuleDrawer({ activeModule, onClose, onSelect }) {
+  const modules = [
+    { key: "finances", title: "Finanzas", detail: "Ingresos, gastos y balance", icon: WalletCards },
+    { key: "maintenance", title: "Mantenimiento", detail: "Activos, pautas e historial", icon: Wrench },
+  ];
+
+  return (
+    <div className="module-drawer-layer">
+      <button className="module-drawer-backdrop" aria-label="Cerrar menú" onClick={onClose} />
+      <aside className="module-drawer" aria-label="Módulos de Manyumar">
+        <div className="module-drawer-header">
+          <div><span>MANYUMAR</span><h2>Módulos</h2></div>
+          <button aria-label="Cerrar menú" onClick={onClose}><X size={22} /></button>
+        </div>
+        <p className="module-drawer-copy">Selecciona el área de trabajo.</p>
+        <div className="module-options">
+          {modules.map(({ key, title, detail, icon: Icon }) => (
+            <button className={activeModule === key ? "active" : ""} key={key} onClick={() => onSelect(key)}>
+              <span className="module-option-icon"><Icon size={22} /></span>
+              <span><b>{title}</b><small>{detail}</small></span>
+              {activeModule === key ? <Check size={18} /> : <ChevronRight size={18} />}
+            </button>
+          ))}
+        </div>
+      </aside>
+    </div>
   );
 }
 
