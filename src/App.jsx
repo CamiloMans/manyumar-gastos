@@ -322,6 +322,26 @@ function formatAmountInput(value) {
   return digits ? amountInputFormatter.format(Number(digits)) : "";
 }
 
+function transactionTotals(transactions) {
+  return transactions.reduce(
+    (totals, transaction) => {
+      const amount = Number(transaction.amount || 0);
+
+      if (transaction.type === "income") {
+        totals.income += amount;
+      }
+
+      if (transaction.type === "expense") {
+        totals.expense += amount;
+      }
+
+      totals.balance = totals.income - totals.expense;
+      return totals;
+    },
+    { income: 0, expense: 0, balance: 0 },
+  );
+}
+
 function categoryInitials(category) {
   const words = (category?.name || "")
     .replace(/[^\p{L}\p{N}\s]/gu, " ")
@@ -426,15 +446,16 @@ function App() {
     [companyFilterId, monthTransactions],
   );
 
-  const totals = useMemo(() => {
-    const income = visibleMonthTransactions
-      .filter((transaction) => transaction.type === "income")
-      .reduce((sum, transaction) => sum + Number(transaction.amount), 0);
-    const expense = visibleMonthTransactions
-      .filter((transaction) => transaction.type === "expense")
-      .reduce((sum, transaction) => sum + Number(transaction.amount), 0);
-    return { income, expense, balance: income - expense };
-  }, [visibleMonthTransactions]);
+  const visibleTransactions = useMemo(
+    () =>
+      companyFilterId === "all"
+        ? transactions
+        : transactions.filter((transaction) => transaction.companyId === companyFilterId),
+    [companyFilterId, transactions],
+  );
+
+  const homeTotals = useMemo(() => transactionTotals(visibleTransactions), [visibleTransactions]);
+  const totals = useMemo(() => transactionTotals(visibleMonthTransactions), [visibleMonthTransactions]);
 
   const lookupCategories = useMemo(
     () => [...categories, ...companyCategories],
@@ -686,6 +707,8 @@ function App() {
     companyFilterId,
     companies,
     companyCategories,
+    homeTotals,
+    homeTransactions: visibleTransactions,
     incomeOrigins,
     lookupCategories,
     monthTransactions: visibleMonthTransactions,
@@ -952,31 +975,30 @@ function NavButton({ item, active, onClick }) {
 function HomeView({
   companies,
   companyFilterId,
+  homeTotals,
+  homeTransactions,
   lookupCategories,
-  monthTransactions,
-  selectedMonth,
   setCompanyFilterId,
   setTransactionModal,
-  totals,
 }) {
-  const latest = [...monthTransactions].sort(
+  const latest = [...homeTransactions].sort(
     (a, b) => parseStoredDate(b.createdAt || b.date) - parseStoredDate(a.createdAt || a.date),
   );
-  const expenseByCategory = categoryTotals(monthTransactions, lookupCategories, "expense");
+  const expenseByCategory = categoryTotals(homeTransactions, lookupCategories, "expense");
 
   return (
     <section className="page-stack home-page">
-      <p className="month-kicker">{monthTitle(selectedMonth).toUpperCase()}</p>
+      <p className="month-kicker">TODOS LOS MESES</p>
       <CompanyFilter companies={companies} value={companyFilterId} onChange={setCompanyFilterId} />
 
       <div className="balance-card">
-        <p>Balance del mes</p>
-        <strong>{formatter.format(totals.balance)}</strong>
+        <p>Balance total</p>
+        <strong>{formatter.format(homeTotals.balance)}</strong>
       </div>
 
       <div className="summary-grid">
-        <SummaryCard title="Ingresos" value={totals.income} type="income" />
-        <SummaryCard title="Gastos" value={totals.expense} type="expense" />
+        <SummaryCard title="Ingresos totales" value={homeTotals.income} type="income" />
+        <SummaryCard title="Gastos totales" value={homeTotals.expense} type="expense" />
       </div>
 
       {expenseByCategory.length > 0 && (

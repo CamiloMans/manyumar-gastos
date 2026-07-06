@@ -320,6 +320,9 @@ function AgendaView({ assets, onApprove, onComplete, onNew, plans, requirements 
         {requirements.map((requirement) => {
           const asset = assets.find((item) => item.id === requirement.assetId);
           const plan = plans.find((item) => item.id === requirement.planId);
+          const checklist = requirement.checklist || [];
+          const checkDone = checklist.filter((item) => item.done).length;
+          const checkPct = checklist.length ? Math.round((checkDone / checklist.length) * 100) : 0;
           return (
             <article className={`requirement-card ${isDue(requirement) ? "due" : ""}`} key={requirement.id}>
               <div className="requirement-topline">
@@ -330,21 +333,19 @@ function AgendaView({ assets, onApprove, onComplete, onNew, plans, requirements 
                 </div>
                 <span className={`status-pill ${requirement.status}`}>{requirement.status === "aprobado" ? "Aprobado" : "Por aprobar"}</span>
               </div>
-              <div className="requirement-task">
-                <Wrench size={17} />
-                <div><b>{plan?.task || "Mantenimiento"}</b><span>{plan ? frequencyLabel(plan) : ""}</span></div>
+              <div className="requirement-meta">
+                <span><Wrench size={14} /> {plan ? frequencyLabel(plan) : "Mantenimiento"}</span>
+                <span><CalendarClock size={14} /> {formatDate(requirement.scheduledDate)}</span>
               </div>
-              {requirement.checklist?.length > 0 && (
+              {checklist.length > 0 && (
                 <div className="requirement-checklist-progress">
-                  <ListChecks size={15} />
-                  <span>{requirement.checklist.filter((item) => item.done).length}/{requirement.checklist.length} pasos del checklist</span>
+                  <div className="checklist-progress-head">
+                    <span className="checklist-progress-label"><ListChecks size={15} /> Checklist</span>
+                    <b>{checkDone}<i>/{checklist.length}</i></b>
+                  </div>
+                  <div className="checklist-progress-bar"><span style={{ width: `${checkPct}%` }} /></div>
                 </div>
               )}
-              <div className="requirement-date">
-                <CalendarClock size={16} />
-                <span>{isDue(requirement) ? "Programado para" : "Próxima fecha"}</span>
-                <b>{formatDate(requirement.scheduledDate)}</b>
-              </div>
               {requirement.status === "pendiente" ? (
                 <button className="maintenance-action approve" onClick={() => onApprove(requirement)}><Check size={17} /> Aprobar requerimiento</button>
               ) : (

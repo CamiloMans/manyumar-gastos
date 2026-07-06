@@ -456,7 +456,16 @@ button {
   gap: 12px;
 }
 
-.requirement-card,
+.requirement-card {
+  display: grid;
+  gap: 10px;
+  padding: 13px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
 .asset-card {
   display: grid;
   gap: 14px;
@@ -994,16 +1003,87 @@ button {
 .checklist-run-item.done .checklist-text { color: var(--muted); text-decoration: line-through; }
 .checklist-run-item:disabled { cursor: not-allowed; opacity: 0.6; }
 
-/* Checklist: progreso en agenda e historial */
-.requirement-checklist-progress {
+/* Agenda: frecuencia + próxima fecha en una fila */
+.requirement-meta {
   display: flex;
   align-items: center;
-  gap: 7px;
-  color: var(--muted);
-  font-size: 11px;
+  justify-content: space-between;
+  gap: 10px;
 }
 
-.requirement-checklist-progress svg { color: var(--accent); }
+.requirement-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.requirement-meta span:last-child { color: var(--dark); font-weight: 600; }
+.requirement-meta svg { flex-shrink: 0; color: var(--accent); }
+.requirement-meta span:last-child svg { color: var(--warning); }
+
+/* Checklist: progreso en agenda e historial */
+.requirement-checklist-progress {
+  display: grid;
+  gap: 7px;
+  padding: 10px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card-soft);
+}
+
+.checklist-progress-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+}
+
+.checklist-progress-head b {
+  color: var(--dark);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.checklist-progress-head b i {
+  color: var(--muted);
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 600;
+}
+
+.checklist-progress-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.checklist-progress-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.checklist-progress-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 220ms ease;
+}
+
 .history-checklist { color: var(--accent) !important; }
 
 @media (prefers-reduced-motion: no-preference) {
